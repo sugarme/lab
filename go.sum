@@ -58,6 +58,8 @@ github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfF
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/sugarme/gotch v0.3.11 h1:zL68/eoBR9K4C41FpaaKQZdjK/oxS9RRLBReOgLMkVM=
 github.com/sugarme/gotch v0.3.11/go.mod h1:ydo7fmsmT+2L5p8Am1YhOLSWGN9WV9nyrfk/RSmhTfo=
+github.com/sugarme/gotch v0.3.12 h1:s7HYdZpOfogGz/MJ8CVUaIZg+/ynNLeysbYxWvMmhYY=
+github.com/sugarme/gotch v0.3.12/go.mod h1:ydo7fmsmT+2L5p8Am1YhOLSWGN9WV9nyrfk/RSmhTfo=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
