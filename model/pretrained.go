@@ -33,6 +33,11 @@ var PretrainedModels map[string]resource = map[string]resource{
 		file: "tf_efficientnet_b7_ns.bin",
 		url: "https://PRETRAINED_MODEL_FILES",
 	},
+
+	"resnet34_unet": {
+		file: "resnet34.bin",
+		url: "https://PRETRAINED_MODEL_FILES",
+	},
 }
 
 type PretrainedOptions struct{

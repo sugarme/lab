@@ -1,7 +1,6 @@
 package lab
 
 import (
-	"encoding/gob"
 	"fmt"
 	"log"
 	"math"
@@ -19,7 +18,7 @@ import (
 )
 
 type EvalOptions struct{
-	Thresholds []float64
+	Threshold float64
 	CUDA bool
 	Debug bool
 	LabelsAvailable bool
@@ -29,7 +28,7 @@ type EvalOptions struct{
 type EvalOption func(*EvalOptions)
 func defaultEvalOptions() *EvalOptions{
 	return &EvalOptions{
-		Thresholds: []float64{0.05, 1.05, 0.05},
+		Threshold: 0.5,
 		CUDA: true,
 		Debug: false,
 		LabelsAvailable: true,
@@ -37,9 +36,9 @@ func defaultEvalOptions() *EvalOptions{
 	}
 }
 
-func WithEvalThresholds(vals []float64) EvalOption{
+func WithEvalThreshold(val float64) EvalOption{
 	return func(o *EvalOptions){
-		o.Thresholds = vals
+		o.Threshold = val
 	}
 }
 
@@ -67,50 +66,24 @@ func WithEvalEarlyStopping(v int) EvalOption{
 	}
 }
 
+func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map[string]float64, float64, float64){
+	e.Epoch = epoch	
 
-type Predictor struct{
-	Loader *dutil.DataLoader
-	LabelsAvailable bool
-	CUDA bool
-	Debug bool
-	Epoch int
-}
-
-func NewPredictor(loader *dutil.DataLoader, opts ...EvalOption) *Predictor{
-	options := defaultEvalOptions()
-	for _, o := range opts{
-		o(options)
-	}
-
-	return &Predictor{
-		Loader: loader,
-		LabelsAvailable: options.LabelsAvailable,
-		CUDA: options.CUDA,
-		Debug: options.Debug,
-		Epoch: 0,
-	}
-}
-
-func(p *Predictor) Predict(model ts.ModuleT, criterion LossFunc, epoch int)(yTrue []float64, yPred [][]float64, losses []float64){
-	p.Epoch = epoch	
+	metrics := make(map[string][]float64, 0)
+	validMetrics := make([]float64, 0)
+	losses := make([]float64, 0)
 
 	count := 0
-	p.Loader.Reset()
-	for p.Loader.HasNext(){
-		if p.Debug && count > 10{
-			yTrue[0] = 1.0
-			yTrue[1] = 0.0
-			break
-		}
-
-		dataItem, err := p.Loader.Next()
+	e.Loader.Reset()
+	for e.Loader.HasNext(){
+		dataItem, err := e.Loader.Next()
 		if err != nil{
 			err = fmt.Errorf("Predictor - Fetch data failed: %w\n", err)
 			log.Fatal(err)
 		}
 
 		device := gotch.CPU
-		if p.CUDA{
+		if e.CUDA{
 			device = gotch.CudaIfAvailable()
 		}
 
@@ -118,30 +91,45 @@ func(p *Predictor) Predict(model ts.ModuleT, criterion LossFunc, epoch int)(yTru
 		input := dataItem.([]ts.Tensor)[0].MustUnsqueeze(0, true).MustTo(device, true)
 		target := dataItem.([]ts.Tensor)[1].MustTo(device, true)
 
-		output := model.ForwardT(input, false).MustDetach(true)
-		loss := criterion(output, target)
+		logits := model.ForwardT(input, false).MustDetach(true)
+
+		// loss
+		loss := criterion(logits, target)
 		lossVal := loss.Float64Values()[0]	
 		losses = append(losses, lossVal)
 
-		yTrue = append(yTrue, target.Float64Values()[0])
+		// metrics
+		stepMetrics, stepValidMetric, err := e.calculateMetrics(logits, target)
+		for k, v := range stepMetrics{
+			metrics[k] = append(metrics[k], v)
+		}
+		validMetrics = append(validMetrics, stepValidMetric)
 
-		pvalues := output.MustSoftmax(1, gotch.Float, true)
-		yPred = append(yPred, pvalues.Float64Values())
-
-		loss.MustDrop()	
-		pvalues.MustDrop()
 		input.MustDrop()
 		target.MustDrop()
+		logits.MustDrop()
+		loss.MustDrop()	
 
 		count++
 	} // inf. for loop
 
-	return yTrue, yPred, losses
+	avgMetrics := make(map[string]float64, 0)
+	for k, v := range metrics{
+		avgMetrics[k] = mean(v)
+	}
+	avgValidMetric := mean(validMetrics)
+	loss := mean(losses)
+
+	return avgMetrics, avgValidMetric, loss
 }
 
-
 type Evaluator struct {
-	Predictor *Predictor
+	// Predictor *Predictor
+	Loader *dutil.DataLoader
+	LabelsAvailable bool
+	CUDA bool
+	Debug bool
+	Epoch int
 	// List of strings corresponding to desired metrics
 	// These strings should correspond to function names defined in file `metrics.go`
 	Metrics []Metric
@@ -165,8 +153,8 @@ type Evaluator struct {
 	// How many epochs of no improvement do we wait before stopping training?
 	EarlyStopping int
 	Stopping int
-	// thresholds=np.arange(0.05, 1.05, 0.05),
-	Thresholds []float64
+
+	Threshold float64
 	History []map[string]float64
 
 	BestModel string
@@ -193,7 +181,7 @@ func (e *Evaluator) CheckStopping() bool {
 	return e.Stopping >= e.EarlyStopping
 }
 
-func(e *Evaluator) CheckImprovement(score float64) bool{
+func(e *Evaluator) checkImprovement(score float64) bool{
 	// If mode is "min", make score negative, then higher score is
 	// better (i.e., -0.01 > -0.02)
 	if e.Mode == "min"{
@@ -212,14 +200,14 @@ func(e *Evaluator) CheckImprovement(score float64) bool{
 	return improved
 }
 
-func(e *Evaluator) SaveCheckpoint(weights *nn.VarStore, validMetric float64, yTrue []float64, yPred [][]float64) error{
-	saveFile := fmt.Sprintf("%s_%03d_VM-%0.4f.bin", e.Prefix, e.Predictor.Epoch, validMetric)
+func(e *Evaluator) saveCheckpoint(weights *nn.VarStore, validMetric float64) error{
+	saveFile := fmt.Sprintf("%s_%03d_VM-%0.4f.bin", e.Prefix, e.Epoch, validMetric)
 	saveFile = strings.ToUpper(saveFile)
 	saveFile = fmt.Sprintf("%s/%s", e.SaveCheckpointDir, saveFile)
 
 	switch e.SaveBest{
 	case true:
-		if e.CheckImprovement(validMetric){
+		if e.checkImprovement(validMetric){
 			// delete previous saved best model
 			if e.BestModel != ""{
 				err := os.Remove(e.BestModel)
@@ -235,24 +223,6 @@ func(e *Evaluator) SaveCheckpoint(weights *nn.VarStore, validMetric float64, yTr
 				err = fmt.Errorf("SaveCheckpoint - Save model failed: %w\n", err)
 				return err
 			}
-
-			// save prediction
-			data := struct{
-				yTrue []float64 `json:"y_true"`
-				yPred [][]float64 `json:"y_pred"`
-			}{
-				yTrue: yTrue,
-				yPred: yPred,
-			}
-			predFile := fmt.Sprintf("%s/%s", e.SaveCheckpointDir, "valid_prediction.bin")
-			f, err := os.Create(predFile)
-			if err != nil{
-				err = fmt.Errorf("SaveCheckpoint - Create validation file to save failed: %w\n", err)
-				return err
-			}
-			enc := gob.NewEncoder(f)
-			enc.Encode(data)
-			f.Close()
 		}
 	case false:
 			// save a new best model
@@ -261,45 +231,34 @@ func(e *Evaluator) SaveCheckpoint(weights *nn.VarStore, validMetric float64, yTr
 				err = fmt.Errorf("SaveCheckpoint - Save model failed: %w\n", err)
 				return err
 			}
-
-			// save prediction
-			data := struct{
-				yTrue []float64 `json:"y_true"`
-				yPred [][]float64 `json:"y_pred"`
-			}{
-				yTrue: yTrue,
-				yPred: yPred,
-			}
-			predFile := fmt.Sprintf("%s/%s", e.SaveCheckpointDir, "valid_prediction.bin")
-			f, err := os.Create(predFile)
-			if err != nil{
-				err = fmt.Errorf("SaveCheckpoint - Create validation file to save failed: %w\n", err)
-				return err
-			}
-			enc := gob.NewEncoder(f)
-			enc.Encode(data)
-			f.Close()
 	}
 
 	return nil
 }
 
-// CalculateMetrics calculates metrics specified in slice of metrics property.
-// It logs calculated metrics to stdout and log file and returns valid metric.
-func(e *Evaluator) CalculateMetrics(yTrue []float64, yPred [][]float64, losses []float64) (float64, error){
+func(e *Evaluator) calculateMetrics(logits, target *ts.Tensor) (map[string]float64, float64,error){
 	// map of metric name and its value
 	metrics := make(map[string]float64, 0)
-	metrics["loss"] = mean(losses)
 
 	for _, m := range e.Metrics{
-		l := m.Calculate(yTrue, yPred, e.Thresholds)
+		l := m.Calculate(logits, target, e.Threshold)
 		n := m.Name()
 		metrics[n] = l
 	}
 
 	validMetric := metrics[e.ValidMetric.Name()]
 	metrics["vm"] = validMetric
-	
+
+	metrics["epoch"] = float64(e.Epoch)
+	e.History = append(e.History, metrics)
+
+	return metrics, validMetric, nil
+}
+
+// Validate validates model and returns valid metric and loss values.
+func (e *Evaluator) Validate(model *Model, criterion LossFunc, currentEpoch int) (float64, float64, error) {
+	metrics, validMetric, loss := e.evaluate(model.Module, criterion, currentEpoch)
+
 	// Log results
 	var keys []string
 	for k := range metrics{
@@ -313,28 +272,15 @@ func(e *Evaluator) CalculateMetrics(yTrue []float64, yPred [][]float64, losses [
 		e.Logger.SendSlack(msg)
 	}
 
-	metrics["epoch"] = float64(e.Predictor.Epoch)
+	metrics["epoch"] = float64(e.Epoch)
 	e.History = append(e.History, metrics)
 
-	return validMetric, nil
-}
-
-// Validate validates model and return valid metric.
-func (e *Evaluator) Validate(model *Model, criterion LossFunc, currentEpoch int) (validMetric, avgLoss float64, err error) {
-	yTrue, yPred, losses := e.Predictor.Predict(model.Module, criterion, currentEpoch)
-
-	validMetric, err = e.CalculateMetrics(yTrue, yPred, losses)
+	err := e.saveCheckpoint(model.Weights, validMetric)
 	if err != nil{
 		return -1, -1, err
 	}
 
-	err = e.SaveCheckpoint(model.Weights, validMetric, yTrue, yPred)
-	if err != nil{
-		return -1, -1,err
-	}
-
-	avgLoss = mean(losses)
-	return validMetric, avgLoss,  nil
+	return validMetric, loss,  nil
 }
 
 func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, validMetric Metric, opts ...EvalOption) (*Evaluator, error){
@@ -350,7 +296,11 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 	metricsFile := fmt.Sprintf("%s/%s", saveCheckpointDir, "metrics.csv")
 
 	eval := &Evaluator{
-		Predictor: NewPredictor(loader, opts...),
+		Loader: loader,
+		LabelsAvailable: options.LabelsAvailable,
+		CUDA: options.CUDA,
+		Debug: options.Debug,
+		Epoch: 0,
 		Metrics: metrics,
 		ValidMetric: validMetric,
 		Mode: cfg.Evaluation.Params.Mode,
@@ -359,7 +309,7 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 		SaveBest: saveBest,
 		MetricsFile: metricsFile,
 		EarlyStopping: options.EarlyStopping,
-		Thresholds: options.Thresholds,
+		Threshold: options.Threshold,
 		History: nil,
 		BestModel: "",
 		BestScore: math.Inf(-1),

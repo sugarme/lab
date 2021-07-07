@@ -23,6 +23,8 @@ var ModelZoo map[string]string = map[string]string{
 	"tf_efficientnet_b5_ns": "EffNet",
 	"tf_efficientnet_b6_ns": "EffNet",
 	"tf_efficientnet_b7_ns": "EffNet",
+
+	"resnet34_unet": "UNet",
 }
 
 // Model represents a deep learning model.

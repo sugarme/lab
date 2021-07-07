@@ -10,6 +10,7 @@ import (
 	"github.com/sugarme/gotch/nn"
 	ts "github.com/sugarme/gotch/tensor"
 
+	"github.com/sugarme/lab/loss"
 	lib "github.com/sugarme/lab/model"
 )
 
@@ -64,6 +65,9 @@ func (b *Builder) BuildModel(configOpt ...ModelConfig) (*Model, error) {
 	case "EffNet":
 		module = lib.EffNet(vs.Root(), cfg.Params.NumClasses, cfg.Params.Backbone, cfg.Params.Dropout)
 
+	case "UNet":
+		module = lib.UNet(vs.Root(), cfg.Params.Backbone)
+
 	// TODO: continue
 
 	default:
@@ -73,8 +77,7 @@ func (b *Builder) BuildModel(configOpt ...ModelConfig) (*Model, error) {
 
 	// Load pretrained if specified
 	if cfg.Params.Pretrained {
-		pretrainedFile, err := lib.PretrainedFile(cfg.Params.Backbone)
-		// pretrainedFile, err := lib.PretrainedFile(cfg.Params.Backbone, model.WithPath(cfg.Params.PretrainedPath))
+		pretrainedFile, err := lib.PretrainedFile(cfg.Params.Backbone, lib.WithPath(cfg.Params.PretrainedPath))
 		if err != nil {
 			err := fmt.Errorf("Get pretrained file failed: %w\n", err)
 			return nil, err
@@ -105,6 +108,16 @@ func (b *Builder) BuildLoss() (LossFunc, error) {
 	case "CrossEntropyLoss":
 		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor {
 			return logits.CrossEntropyForLogits(labels)
+		}
+
+	case "CriterionBCE":
+		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
+			return loss.CriterionBinaryCrossEntropy(logits, labels)				
+		}
+
+	case "BCELoss":
+		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
+			return loss.BCELoss(logits, labels)				
 		}
 	default:
 		err := fmt.Errorf("Unsupported loss function: %s\n", name)
