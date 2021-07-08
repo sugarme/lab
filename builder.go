@@ -110,14 +110,14 @@ func (b *Builder) BuildLoss() (LossFunc, error) {
 			return logits.CrossEntropyForLogits(labels)
 		}
 
-	case "CriterionBCE":
-		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
-			return loss.CriterionBinaryCrossEntropy(logits, labels)				
-		}
-
 	case "BCELoss":
 		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
 			return loss.BCELoss(logits, labels)				
+		}
+
+	case "DiceLoss":
+		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
+			return loss.DiceLoss(logits, labels)				
 		}
 	default:
 		err := fmt.Errorf("Unsupported loss function: %s\n", name)

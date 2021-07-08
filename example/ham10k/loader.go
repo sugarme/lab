@@ -124,6 +124,8 @@ func (m *HamDataset) Item(idx int) (interface{}, error) {
 			return nil, err
 		}
 
+
+
 	case 1:
 		imgTs, err = vision.LoadAndResize(sample.Input, resize[0], resize[0])
 		if err != nil {
@@ -149,6 +151,7 @@ func (m *HamDataset) Item(idx int) (interface{}, error) {
 		}
 	}
 
+
 	// image
 	imgTs0 := imgTs.MustTo(gotch.CudaIfAvailable(), true)
 	var img *ts.Tensor
@@ -159,19 +162,15 @@ func (m *HamDataset) Item(idx int) (interface{}, error) {
 	}
 	imgTs0.MustDrop()
 
-	// mask
-	maskTs0 := maskTs.MustTo(gotch.CudaIfAvailable(), true)
-	var mask *ts.Tensor
-	if m.IsTrain && m.Transformer != nil{
-		mask = m.Transformer.Transform(maskTs0)
-	} else {
-		mask = maskTs0.MustShallowClone()
-	}
-	maskTs0.MustDrop()
-
-
 	imgTs1 := img.MustDiv1(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
-	maskTs1 := mask.MustDiv1(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
+
+	// mask
+	maskGray, err := rgb2GrayScale(maskTs)
+	if err != nil {
+		return nil, err
+	}
+	maskTs.MustDrop()
+	maskTs1 := maskGray.MustDiv1(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
 
 	return []ts.Tensor{*imgTs1, *maskTs1}, nil
 }
@@ -210,7 +209,7 @@ func NewHamDataset(data []Sample, cfg *lab.Config, isTrain bool) (dutil.Dataset,
 }
 
 func checkLoader(cfg *lab.Config) error{
-	trainData, _, err := makeDatasets()
+	trainData, _, err := makeDatasets(cfg.Dataset.DataDir[0])
 	if err != nil{
 		return err
 	}
@@ -276,3 +275,34 @@ func checkLoader(cfg *lab.Config) error{
 
 	return nil
 }
+
+// rgb2GrayScale converts a RGB (3xHxW) to grayscale image (HxW).
+// ref. https://github.com/pytorch/vision/blob/master/torchvision/transforms/functional_tensor.py#L196-L234
+// (0.2989 * r + 0.587 * g + 0.114 * b)
+func rgb2GrayScale(x *ts.Tensor) (*ts.Tensor, error) {
+	size := x.MustSize()
+	if len(size) < 3 {
+		err := fmt.Errorf("Expect at least 3D tensor. Got %v dimensions.\n", len(size))
+		return nil, err
+	}
+
+	// e.g [4, 3, 256, 256]
+	chanSize := size[len(size)-3]
+	if chanSize != 3 {
+		err := fmt.Errorf("Expect image of 3 channels for RGB. Got %v .\n", chanSize)
+		return nil, err
+	}
+
+	channels := x.MustUnbind(-3, false)
+	r := channels[0].MustMul1(ts.FloatScalar(0.2989), true)
+	g := channels[1].MustMul1(ts.FloatScalar(0.587), true)
+	b := channels[2].MustMul1(ts.FloatScalar(0.114), true)
+
+	rg := r.MustAdd(g, true)
+	g.MustDrop()
+	gray := rg.MustAdd(b, true)
+	b.MustDrop()
+
+	return gray, nil
+}
+

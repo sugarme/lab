@@ -109,8 +109,8 @@ func main() {
 	logger.Printf("Saving to %q...\n", cfg.Evaluation.Params.SaveCheckpointDir)
 
 	switch task {
-	// case "train":
-		// train(cfg, skinset, folds)
+	case "train":
+		train(cfg)
 
 	case "check-loader":
 		err := checkLoader(cfg)

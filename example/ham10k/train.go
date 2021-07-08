@@ -86,8 +86,8 @@ func train(cfg *lab.Config) {
 		log.Fatal(err)
 	}
 
-	var metrics []lab.Metric = []lab.Metric{NewDiceCoeffBatch(logger, int(cfg.Model.Params.NumClasses))}
-	var validMetric lab.Metric = NewDiceCoeffBatch(logger, int(cfg.Model.Params.NumClasses))
+	var metrics []lab.Metric = []lab.Metric{NewDiceCoeffBatch()}
+	var validMetric lab.Metric = NewDiceCoeffBatch()
 	evaluator, err := lab.NewEvaluator(cfg, validLoader, metrics, validMetric)
 	if err != nil{
 		log.Fatal(err)

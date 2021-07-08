@@ -7,88 +7,26 @@ import (
 
 // criterionBinaryCrossEntropy calculates loss from input logits and mask
 // using Binary Cross Entropy with Logits algorithm.
-func CriterionBinaryCrossEntropy(logit, mask *ts.Tensor) *ts.Tensor {
-	logitR := logit.MustReshape([]int64{-1}, false)
-	maskR := mask.MustReshape([]int64{-1}, false)
+func CriterionBinaryCrossEntropy(logits, mask *ts.Tensor) *ts.Tensor {
+	// fmt.Printf("logit size: %v\n", logits.MustSize())
+	// fmt.Printf("mask size: %v\n", mask.MustSize())
+	// fmt.Printf("logit: %v\n", logit.Float64Values())
+	// fmt.Printf("mask: %v\n", mask.Float64Values())
+	// panic("stop")
 
-	// NOTE: reduction: none = 0; mean = 1; sum = 2. Default=mean
-	// ref. https://pytorch.org/docs/master/nn.functional.html#torch.nn.functional.binary_cross_entropy_with_logits
-	retVal := logitR.MustBinaryCrossEntropyWithLogits(maskR, ts.NewTensor(), ts.NewTensor(), 1, true).MustView([]int64{-1}, true)
-	maskR.MustDrop()
-	return retVal
+	loss := logits.MustSqueeze(false).MustBinaryCrossEntropyWithLogits(mask, ts.NewTensor(), ts.NewTensor(), 1, true).MustView([]int64{-1}, true)
+	return loss
+	
+	// logitR := logit.MustReshape([]int64{-1}, false)
+	// maskR := mask.MustReshape([]int64{-1}, false)
+//
+	// // NOTE: reduction: none = 0; mean = 1; sum = 2. Default=mean
+	// // ref. https://pytorch.org/docs/master/nn.functional.html#torch.nn.functional.binary_cross_entropy_with_logits
+	// retVal := logitR.MustBinaryCrossEntropyWithLogits(maskR, ts.NewTensor(), ts.NewTensor(), 1, true).MustView([]int64{-1}, true)
+	// maskR.MustDrop()
+	// return retVal
 }
 
-// BCELoss calculates loss from logits and ground truth for a mask
-// using Binary Cross Entropy algorithm.
-func BCELoss(logits, mask *ts.Tensor) *ts.Tensor {
-	p := logits.MustSigmoid(false).MustView([]int64{-1}, true)
-	t := mask.MustView([]int64{-1}, false)
-
-	// 1-p
-	p1 := p.MustMul1(ts.FloatScalar(-1), false).MustAdd1(ts.FloatScalar(1), true)
-	// 1-t
-	t1 := t.MustMul1(ts.FloatScalar(-1), false).MustAdd1(ts.FloatScalar(1), true)
-
-	// log(p)
-	pclip := p.MustClip(ts.FloatScalar(1e-6), ts.FloatScalar(1), false)
-	logp := pclip.MustLog(true).MustMul1(ts.FloatScalar(-1), true)
-	p.MustDrop()
-
-	// log(1-p)
-	p1clip := p1.MustClip(ts.FloatScalar(1e-6), ts.FloatScalar(1), true)
-	logn := p1clip.MustLog(true).MustMul1(ts.FloatScalar(-1), true)
-
-	// t * logp
-	tlogp := t.MustMul(logp, true)
-	logp.MustDrop()
-
-	// (1-t)*logn
-	t1logn := t1.MustMul(logn, true)
-	logn.MustDrop()
-
-	loss := tlogp.MustAdd(t1logn, true)
-	t1logn.MustDrop()
-
-	lossMean := loss.MustMean(gotch.Double, true)
-
-	return lossMean
-}
-
-// BCELoss calculates loss from input predict p-values and ground truth for a mask
-// using Binary Cross Entropy algorithm.
-func BCELoss1(probability, mask *ts.Tensor) *ts.Tensor {
-	p := probability.MustView([]int64{-1}, false)
-	t := mask.MustView([]int64{-1}, false)
-
-	// 1-p
-	p1 := p.MustMul1(ts.FloatScalar(-1), false).MustAdd1(ts.FloatScalar(1), true)
-	// 1-t
-	t1 := t.MustMul1(ts.FloatScalar(-1), false).MustAdd1(ts.FloatScalar(1), true)
-
-	// log(p)
-	pclip := p.MustClip(ts.FloatScalar(1e-6), ts.FloatScalar(1), false)
-	logp := pclip.MustLog(true).MustMul1(ts.FloatScalar(-1), true)
-	p.MustDrop()
-
-	// log(1-p)
-	p1clip := p1.MustClip(ts.FloatScalar(1e-6), ts.FloatScalar(1), true)
-	logn := p1clip.MustLog(true).MustMul1(ts.FloatScalar(-1), true)
-
-	// t * logp
-	tlogp := t.MustMul(logp, true)
-	logp.MustDrop()
-
-	// (1-t)*logn
-	t1logn := t1.MustMul(logn, true)
-	logn.MustDrop()
-
-	loss := tlogp.MustAdd(t1logn, true)
-	t1logn.MustDrop()
-
-	lossMean := loss.MustMean(gotch.Double, true)
-
-	return lossMean
-}
 
 // DiceLoss measures overlap between 2
 // Ref. https://github.com/pytorch/pytorch/issues/1249
@@ -181,7 +119,7 @@ func SoftDiceLoss(x, y *ts.Tensor) *ts.Tensor { // x prediction, y ground truth
 
 // Ref. https://www.kaggle.com/finlay/pytorch-fcn-resnet50-in-20-minute
 func LossFunc(logit, mask *ts.Tensor) *ts.Tensor {
-	bce := criterionBinaryCrossEntropy(logit, mask).MustMul1(ts.FloatScalar(0.8), true)
+	bce := CriterionBinaryCrossEntropy(logit, mask).MustMul1(ts.FloatScalar(0.8), true)
 	prob := logit.MustSigmoid(false)
 	dice := SoftDiceLoss(prob, mask).MustMul1(ts.FloatScalar(0.2), true)
 	prob.MustDrop()

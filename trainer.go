@@ -449,14 +449,14 @@ func (t *Trainer) PrintProgress() {
 	// average loss for report period
 	avgLoss := loss/float64(t.Verbosity)
 	loadTime, stepTime := t.TimeTracker.GetTime("seconds")
+
+	// var lr float64 = 0.00003
+	// msg := fmt.Sprintf("Epoch %2d/%d\t\tStep %5d/%d(avg. data time: %0.4fs/step, step time: %0.4fs/step)\t\t Loss %0.4f (lr %.1e)\n", t.CurrentEpoch + 1, t.Epochs,t.Steps, t.TotalSteps, loadTime,stepTime, avgLoss, lr)
 	
 	var lr float64 = t.Optimizer.GetLRs()[0] // For now, assuming there ONE param group!
-	msg := fmt.Sprintf("Epoch %2d/%d\t\tStep %5d/%d(avg. data time: %0.4fs/step, step time: %0.4fs/step)\t\t Loss %0.4f (lr %.1e)\n", t.CurrentEpoch + 1, t.Epochs,t.Steps, t.TotalSteps, loadTime,stepTime, avgLoss, lr) 
+	msg := fmt.Sprintf("Epoch %2d/%d\t\tStep %5d/%d(avg. data time: %0.4fs/step, step time: %0.4fs/step)\t\t Loss %0.4f (lr %.1e)\n", t.CurrentEpoch + 1, t.Epochs,t.Steps, t.TotalSteps, loadTime,stepTime, avgLoss, lr)
 	t.Logger.Print(msg)
-	err := t.Logger.SendSlack(msg)
-	if err != nil{
-		fmt.Println(err)
-	}
+	t.Logger.SendSlack(msg)
 }
 
 func (t *Trainer) makeLossGraph(){

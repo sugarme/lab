@@ -91,7 +91,7 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 		input := dataItem.([]ts.Tensor)[0].MustUnsqueeze(0, true).MustTo(device, true)
 		target := dataItem.([]ts.Tensor)[1].MustTo(device, true)
 
-		logits := model.ForwardT(input, false).MustDetach(true)
+		logits := model.ForwardT(input, false).MustDetach(true).MustSqueeze(true)
 
 		// loss
 		loss := criterion(logits, target)
@@ -119,6 +119,7 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 	}
 	avgValidMetric := mean(validMetrics)
 	loss := mean(losses)
+	avgMetrics["loss"] = loss
 
 	return avgMetrics, avgValidMetric, loss
 }

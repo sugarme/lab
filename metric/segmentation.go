@@ -1,3 +1,4 @@
+// package metric - common image segmentation metrics.
 package metric
 
 import (
@@ -6,6 +7,30 @@ import (
 	"github.com/sugarme/gotch"
 	ts "github.com/sugarme/gotch/tensor"
 )
+
+// JaccardIndex compute the intersection over union.
+// ref: https://github.com/kevinzakka/pytorch-goodies/blob/c039691f349be9f21527bb38b907a940bfc5e8f3/metrics.py#L12
+func JaccardIndex(pred, target *ts.Tensor, nclasses int64) float64 {
+	hist := FastHist(pred, target, nclasses)
+	intersect := hist.MustDiag(0, false)
+	eps := 1e-10
+	a := hist.MustSum1([]int64{1}, false, gotch.Double, false)
+	b := hist.MustSum1([]int64{0}, false, gotch.Double, false)
+
+	denominator := a.MustAdd(b, true).MustSub(intersect, true).MustAdd1(ts.FloatScalar(eps), true)
+	b.MustDrop()
+
+	jaccard := intersect.MustDiv(denominator, true)
+
+	denominator.MustDrop()
+
+	mean := jaccard.MustMean(gotch.Double, true)
+	retVal := mean.Float64Values()[0]
+	jaccard.MustDrop()
+	mean.MustDrop()
+
+	return retVal
+}
 
 // DiceLoss calculates intersection over union.
 // Ref: https://www.kaggle.com/vishnukv64/unet-pytorch/comments
@@ -110,30 +135,6 @@ func FastHist(pred, target *ts.Tensor, nclasses int64) *ts.Tensor {
 	return hist
 }
 
-// JaccardIndex compute the intersection over union.
-// ref: https://github.com/kevinzakka/pytorch-goodies/blob/c039691f349be9f21527bb38b907a940bfc5e8f3/metrics.py#L12
-func JaccardIndex(pred, target *ts.Tensor, nclasses int64) float64 {
-
-	hist := FastHist(pred, target, nclasses)
-	intersect := hist.MustDiag(0, false)
-	eps := 1e-10
-	a := hist.MustSum1([]int64{1}, false, gotch.Double, false)
-	b := hist.MustSum1([]int64{0}, false, gotch.Double, false)
-
-	denominator := a.MustAdd(b, true).MustSub(intersect, true).MustAdd1(ts.FloatScalar(eps), true)
-	b.MustDrop()
-
-	jaccard := intersect.MustDiv(denominator, true)
-
-	denominator.MustDrop()
-
-	mean := jaccard.MustMean(gotch.Double, true)
-	retVal := mean.Float64Values()[0]
-	jaccard.MustDrop()
-	mean.MustDrop()
-
-	return retVal
-}
 
 // IoU calculates intersection over union.
 // Ref: https://discuss.pytorch.org/t/understanding-different-metrics-implementations-iou/85817

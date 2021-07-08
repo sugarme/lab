@@ -10,8 +10,8 @@ dataset:
   inner_fold: 0
   outer_fold: 0
   outer_only: true
-  data_dir: ["../data"]
-  csv_filename: ../data/ham10k.csv 
+  data_dir: ["data"]
+  csv_filename: data/ham10k.csv 
 
 
 transform:
@@ -49,14 +49,14 @@ find_lr: # this is its own mode
 
 
 train:
-  batch_size: 30
+  batch_size: 16
   trainer: Trainer
   params:
     gradient_accumulation: 1
-    num_epochs: 100
+    num_epochs: 300
     steps_per_epoch: 0
     validate_interval: 5
-    verbosity: 100
+    verbosity: 1
     amp: false
 
 
@@ -64,7 +64,7 @@ evaluation:
   batch_size: 1
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: ../checkpoint/baseline
+    save_checkpoint_dir: checkpoint/baseline
     save_best: true
     prefix: effnet
     metrics: [dice_coeff_batch]
@@ -73,15 +73,15 @@ evaluation:
     improve_thresh: 1.0e-6
 
 loss:
-  name: BCELoss
+  # name: BCELoss
+  name: DiceLoss
   params:
 
 
 optimizer:
-  # name: AdamW
-  name: SGD
+  name: AdamW
+  # name: SGD
   params:
-    # lr: 3.0e-4
     lr: 3.0e-4
     weight_decay: 5.0e-4
 
