@@ -10,7 +10,7 @@ import (
 
 // JaccardIndex compute the intersection over union.
 // ref: https://github.com/kevinzakka/pytorch-goodies/blob/c039691f349be9f21527bb38b907a940bfc5e8f3/metrics.py#L12
-func JaccardIndex(pred, target *ts.Tensor, nclasses int64) float64 {
+func JaccardIndex1(pred, target *ts.Tensor, nclasses int64) float64 {
 	hist := FastHist(pred, target, nclasses)
 	intersect := hist.MustDiag(0, false)
 	eps := 1e-10
@@ -28,35 +28,6 @@ func JaccardIndex(pred, target *ts.Tensor, nclasses int64) float64 {
 	retVal := mean.Float64Values()[0]
 	jaccard.MustDrop()
 	mean.MustDrop()
-
-	return retVal
-}
-
-// DiceLoss calculates intersection over union.
-// Ref: https://www.kaggle.com/vishnukv64/unet-pytorch/comments
-func DiceLoss(pred, target *ts.Tensor) float64 {
-	fmt.Printf("%i", pred)
-	fmt.Printf("%i", target)
-	smooth := 1.0
-	p := pred.MustContiguous(false)
-	t := target.MustContiguous(false)
-
-	ptMul := p.MustMul(t, false)
-	intersection := ptMul.MustSum1([]int64{2}, true, gotch.Double, true).MustSum1([]int64{2}, true, gotch.Double, true)
-
-	pSum := p.MustSum1([]int64{2}, true, gotch.Double, true).MustSum1([]int64{2}, true, gotch.Double, true)
-	tSum := t.MustSum1([]int64{2}, true, gotch.Double, true).MustSum1([]int64{2}, true, gotch.Double, true)
-	union := pSum.MustAdd(tSum, true)
-	tSum.MustDrop()
-
-	numerator := intersection.MustMul1(ts.FloatScalar(2.0), true).MustAdd1(ts.FloatScalar(smooth), true)
-	denominator := union.MustAdd1(ts.FloatScalar(smooth), true)
-
-	// 1 - (2*intersection + smooth)/(union + smooth)
-	iou := numerator.MustDiv(denominator, true).MustMul1(ts.FloatScalar(-1), true).MustAdd1(ts.FloatScalar(1), true)
-	denominator.MustDrop()
-
-	retVal := iou.MustMean(gotch.Double, true).Float64Values()[0]
 
 	return retVal
 }
@@ -164,18 +135,4 @@ func IoU(logits, mask *ts.Tensor) float64 {
 
 	return retVal
 }
-
-// BCEWithLogitsLoss calculates loss from input logits and mask
-// using Binary Cross Entropy with Logits algorithm.
-func BCEWithLogitsLoss(logit, mask *ts.Tensor) *ts.Tensor {
-	l := logit.MustReshape([]int64{-1}, false)
-	m := mask.MustReshape([]int64{-1}, false)
-
-	// NOTE: reduction: none = 0; mean = 1; sum = 2. Default=mean
-	// ref. https://pytorch.org/docs/master/nn.functional.html#torch.nn.functional.binary_cross_entropy_with_logits
-	retVal := l.MustBinaryCrossEntropyWithLogits(m, ts.NewTensor(), ts.NewTensor(), 1, true).MustView([]int64{-1}, true)
-	m.MustDrop()
-	return retVal
-}
-
 

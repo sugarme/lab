@@ -8,11 +8,18 @@ import (
 	"github.com/sugarme/lab"
 )
 
-func train(cfg *lab.Config) {
+func train(cfg *lab.Config, isFull bool) {
 	fmt.Printf("Start training...\n")
-
 	dataDir := cfg.Dataset.DataDir[0]
-	trainSet, validSet, err := makeDatasets(dataDir)
+	var(
+		trainSet, validSet []Sample
+		err error
+	)
+	if isFull{
+		trainSet, validSet, err = makeFullDatasets(dataDir)
+	} else {
+		trainSet, validSet, err = makeDatasets(dataDir)
+	}
 
 	trainData, err := NewHamDataset(trainSet, cfg, true)
 	if err != nil{

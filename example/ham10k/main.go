@@ -23,6 +23,7 @@ var (
 	modelConfig   string  // config file for model build
 	eps           float64 // epsilon for optimizer
 	checkpointDir string
+	fullDataset bool
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	flag.StringVar(&modelConfig, "model_config", "", "Specify a model config file.")
 	flag.Float64Var(&eps, "eps", 0.0, "Specify epsilon value.")
 	flag.StringVar(&checkpointDir, "checkpoint_dir", "", "Specify checkpoint directory.")
+	flag.BoolVar(&fullDataset, "full", false, "Specify whether to use full dataset or not.")
 }
 
 func main() {
@@ -110,7 +112,7 @@ func main() {
 
 	switch task {
 	case "train":
-		train(cfg)
+		train(cfg, fullDataset)
 
 	case "check-loader":
 		err := checkLoader(cfg)
@@ -122,6 +124,9 @@ func main() {
 		if err != nil{
 			log.Fatal(err)
 		}
+
+	case "check-data":
+		_, _, err = makeFullDatasets("./data/10k")
 	}
 }
 

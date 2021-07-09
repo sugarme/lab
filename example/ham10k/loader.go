@@ -306,3 +306,81 @@ func rgb2GrayScale(x *ts.Tensor) (*ts.Tensor, error) {
 	return gray, nil
 }
 
+// Make train, valid for full datasets (10k)
+func makeFullDatasets(dataDir string) ([]Sample, []Sample, error){
+	inputDir := fmt.Sprintf("%s/trainx", dataDir)
+	targetDir := fmt.Sprintf("%s/trainy", dataDir)
+
+	var data []Sample
+
+	f, err := os.Open(targetDir)
+	if err != nil{
+		err = fmt.Errorf("Opening target directory failed: %w\n", err)
+		return nil, nil, err
+	}
+
+	entries, err := f.Readdir(0)
+	if err != nil{
+		err = fmt.Errorf("Browsing input directory failed: %w\n", err)
+		return nil, nil, err
+	}
+
+
+	for _, entry := range entries{
+		if !entry.IsDir(){
+			filename := entry.Name()
+			// imageStem := strings.TrimPrefix(filename, "X_")
+			imageName := strings.TrimSuffix(filename, "_segmentation.png")
+
+			// lookup target, if not found, skip this sample
+			inputFile := fmt.Sprintf("%s/%s.jpg", inputDir, imageName)
+			if _, err := os.Stat(inputFile); os.IsNotExist(err){
+				fmt.Printf("Input file %q does not exist. Skip this sample %q\n", inputFile, imageName)
+			}
+			sample := Sample{
+				Name: imageName, 
+				Target: fmt.Sprintf("%s/%s", targetDir, filename),
+				Input: inputFile,
+			}
+			data = append(data, sample)
+		}
+	}
+
+	fmt.Printf("total samples: %d\n", len(data))
+
+	// Split train:test = 3:1 (test samples = 25%)
+	kf, err := dutil.NewKFold(len(data), dutil.WithNFolds(4), dutil.WithKFoldShuffle(true))
+	if err != nil{
+		err = fmt.Errorf("Split train/valid data  failed: %w\n", err)
+		return nil, nil, err
+	}
+
+	folds := kf.Split()
+
+	// Just take fold 0
+	trainIds := folds[0].Train
+	validIds := folds[0].Test
+
+	var(
+		trainData []Sample
+		validData []Sample
+	)
+
+	for _, id := range trainIds{
+		s := data[id]
+		trainData = append(trainData, s)
+	}
+	for _, id := range validIds{
+		s := data[id]
+		validData = append(validData, s)
+	}
+
+	fmt.Printf("train samples: %d\n", len(trainData))
+	fmt.Printf("valid samples: %d\n", len(validData))
+
+	// fmt.Printf("Name: %q\n", trainData[0].Name)
+	// fmt.Printf("Input: %q\n", trainData[0].Input)
+	// fmt.Printf("Target: %q\n", trainData[0].Target)
+
+	return trainData, validData, nil
+}

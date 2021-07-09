@@ -119,6 +119,11 @@ func (b *Builder) BuildLoss() (LossFunc, error) {
 		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
 			return loss.DiceLoss(logits, labels)				
 		}
+
+	case "JaccardLoss":
+		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
+			return loss.JaccardLoss(logits, labels)				
+		}
 	default:
 		err := fmt.Errorf("Unsupported loss function: %s\n", name)
 		return nil, err

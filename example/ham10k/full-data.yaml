@@ -1,5 +1,7 @@
 seed: 42
 
+slack_url: "https://hooks.slack.com/services/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"
+
 dataset:
   name: MelDataset
   params:
@@ -10,7 +12,7 @@ dataset:
   inner_fold: 0
   outer_fold: 0
   outer_only: true
-  data_dir: ["data/200"]
+  data_dir: ["data/10k"]
   csv_filename: data/ham10k.csv 
 
 
@@ -21,7 +23,7 @@ transform:
     m: 12.0
   num_workers: 0
   pad_ratio: null
-  # resize_to: [224, 224]
+  resize_to: [224, 224]
   preprocess:
     image_range: [0, 255]
     input_range: [0, 1]
@@ -53,10 +55,10 @@ train:
   trainer: Trainer
   params:
     gradient_accumulation: 1
-    num_epochs: 300
+    num_epochs: 100
     steps_per_epoch: 0
-    validate_interval: 5
-    verbosity: 1
+    validate_interval: 1
+    verbosity: 100
     amp: false
 
 
@@ -64,7 +66,7 @@ evaluation:
   batch_size: 1
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/baseline
+    save_checkpoint_dir: checkpoint/full-data
     save_best: true
     prefix: effnet
     metrics: [dice_coeff_batch]
@@ -74,8 +76,7 @@ evaluation:
 
 loss:
   # name: BCELoss
-  # name: DiceLoss
-  name: JaccardLoss
+  name: DiceLoss
   params:
 
 
