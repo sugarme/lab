@@ -242,7 +242,7 @@ func(e *Evaluator) calculateMetrics(logits, target *ts.Tensor) (map[string]float
 	metrics := make(map[string]float64, 0)
 
 	for _, m := range e.Metrics{
-		l := m.Calculate(logits, target, e.Threshold)
+		l := m.Calculate(logits, target, WithMetricThreshold(e.Threshold))
 		n := m.Name()
 		metrics[n] = l
 	}

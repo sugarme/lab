@@ -67,15 +67,16 @@ evaluation:
     save_checkpoint_dir: checkpoint/baseline
     save_best: true
     prefix: effnet
-    metrics: [dice_coeff_batch]
-    valid_metric: dice_coeff_batch
+    # metrics: [dice_coeff_batch]
+    metrics: [dice_coefficient, jaccard_index]
+    valid_metric: dice_coefficient
     mode: max
     improve_thresh: 1.0e-6
 
 loss:
   # name: BCELoss
-  # name: DiceLoss
-  name: JaccardLoss
+  name: DiceLoss
+  # name: JaccardLoss
   params:
 
 

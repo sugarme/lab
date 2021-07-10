@@ -1,4 +1,4 @@
-package loss
+package lab
 
 import (
 	"fmt"
@@ -13,11 +13,12 @@ type options struct{
 	FromLogits bool
 	Classes []int // List of classes that contribute in loss computation. By default, all channels are included.
 	LogLoss bool // default = false
+	Threshold float64
 }
 
-type Option func(*options)
+type MetricOption func(*options)
 
-func defaultOptions() *options{
+func defaultMetricOptions() *options{
 	return &options{
 		Smooth: 0.0,
 		Eps: 1.0e-7,
@@ -26,46 +27,47 @@ func defaultOptions() *options{
 		FromLogits: true,
 		Classes: nil,
 		LogLoss: false,
+		Threshold: 0.5,
 	}
 }
 
-func WithSmooth(val float64) Option{
+func WithMetricSmooth(val float64) MetricOption{
 	return func(o *options){
 		o.Smooth = val
 	}
 }
 
-func WithEpsilon(val float64) Option{
+func WithMetricEpsilon(val float64) MetricOption{
 	return func(o *options){
 		o.Eps = val
 	}
 }
 
-func WithDims(val []int64) Option{
+func WithMetricDims(val []int64) MetricOption{
 	return func(o *options){
 		o.Dims = val
 	}
 }
 
-func WithFromLogits(val bool) Option{
+func WithMetricFromLogits(val bool) MetricOption{
 	return func(o *options){
 		o.FromLogits = val
 	}
 }
 
-func WithLogLoss(val bool) Option{
+func WithMetricLogLoss(val bool) MetricOption{
 	return func(o *options){
 		o.LogLoss = val
 	}
 }
 
-func WithClasses(val []int) Option{
+func WithMetricClasses(val []int) MetricOption{
 	return func(o *options){
 		o.Classes = val
 	}
 }
 
-func WithMode(val string) Option{
+func WithMetricMode(val string) MetricOption{
 	switch validMode(val){
 	case true:
 		return func(o *options){
@@ -79,6 +81,12 @@ func WithMode(val string) Option{
 	}
 }
 
+func WithMetricThreshold(val float64) MetricOption{
+	return func(o *options){
+		o.Threshold = val
+	}
+}
+
 func validMode(mode string) bool{
 	modes := []string{"BinaryMode", "MultiClassMode", "MultiLabelMode"}
 	for _, m := range modes{
@@ -88,3 +96,4 @@ func validMode(mode string) bool{
 	}
 	return false
 }
+

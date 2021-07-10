@@ -93,8 +93,31 @@ func train(cfg *lab.Config, isFull bool) {
 		log.Fatal(err)
 	}
 
-	var metrics []lab.Metric = []lab.Metric{NewDiceCoeffBatch()}
-	var validMetric lab.Metric = NewDiceCoeffBatch()
+	var metrics []lab.Metric
+	for _, name := range cfg.Evaluation.Params.Metrics{
+		switch name{
+			case "dice_coefficient":
+				m := lab.NewDiceCoefficientMetric()
+				metrics = append(metrics, m)
+			case "jaccard_index":
+				m := lab.NewJaccardIndexMetric()
+				metrics = append(metrics, m)
+			default:
+				err := fmt.Errorf("Unsupported metric: %q\n", name)
+				log.Fatal(err)
+		}
+	}
+	var validMetric lab.Metric
+	switch cfg.Evaluation.Params.ValidMetric{
+	case "dice_coefficient":
+		validMetric = lab.NewDiceCoefficientMetric()
+	default:
+		err := fmt.Errorf("Unsupported valid metric: %q\n", cfg.Evaluation.Params.ValidMetric)
+		log.Fatal(err)
+	}
+
+	// var metrics []lab.Metric = []lab.Metric{NewDiceCoeffBatch()}
+	// var validMetric lab.Metric = NewDiceCoeffBatch()
 	evaluator, err := lab.NewEvaluator(cfg, validLoader, metrics, validMetric)
 	if err != nil{
 		log.Fatal(err)

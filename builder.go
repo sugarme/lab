@@ -10,7 +10,6 @@ import (
 	"github.com/sugarme/gotch/nn"
 	ts "github.com/sugarme/gotch/tensor"
 
-	"github.com/sugarme/lab/loss"
 	lib "github.com/sugarme/lab/model"
 )
 
@@ -98,7 +97,7 @@ func (b *Builder) BuildModel(configOpt ...ModelConfig) (*Model, error) {
 	return m, nil
 }
 
-type LossFunc func(logits, labels *ts.Tensor) *ts.Tensor
+type LossFunc func(logits, target *ts.Tensor) *ts.Tensor
 
 // BuildLoss builds loss function.
 func (b *Builder) BuildLoss() (LossFunc, error) {
@@ -106,23 +105,23 @@ func (b *Builder) BuildLoss() (LossFunc, error) {
 	var lossFunc LossFunc
 	switch name {
 	case "CrossEntropyLoss":
-		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor {
-			return logits.CrossEntropyForLogits(labels)
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor {
+			return CrossEntropyLoss(logits, target)
 		}
 
 	case "BCELoss":
-		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
-			return loss.BCELoss(logits, labels)				
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor{
+			return BCELoss(logits, target)				
 		}
 
 	case "DiceLoss":
-		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
-			return loss.DiceLoss(logits, labels)				
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor{
+			return DiceLoss(logits, target)				
 		}
 
 	case "JaccardLoss":
-		lossFunc = func(logits, labels *ts.Tensor) *ts.Tensor{
-			return loss.JaccardLoss(logits, labels)				
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor{
+			return JaccardLoss(logits, target)				
 		}
 	default:
 		err := fmt.Errorf("Unsupported loss function: %s\n", name)

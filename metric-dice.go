@@ -1,18 +1,17 @@
-package loss
+package lab
 
 import (
 	"fmt"
 	"log"
 	"reflect"
 
-	"github.com/sugarme/gotch"
 	ts "github.com/sugarme/gotch/tensor"
 )
 
-func softJaccardScore(output, target *ts.Tensor, smoothVal float64, epsVal float64, dims []int64) (*ts.Tensor, error){
+func softDiceScore(output, target *ts.Tensor, smoothVal float64, epsVal float64, dims []int64) (*ts.Tensor, error){
 	// Check size
 	if !reflect.DeepEqual(output.MustSize(), target.MustSize()){
-		err := fmt.Errorf("softJaccardScore - Expected output and target have the same shape. Got output %v and target %v\n", output.MustSize(), target.MustSize())
+		err := fmt.Errorf("softDiceScore - Expected output and target have the same shape. Got output %v and target %v\n", output.MustSize(), target.MustSize())
 		return nil, err
 	}
 
@@ -34,13 +33,12 @@ func softJaccardScore(output, target *ts.Tensor, smoothVal float64, epsVal float
 		cardinality = output.MustAdd(target, false).MustSum(dtype, true)
 	}
 
-	// union = cardinality - intersection
-	union := cardinality.MustSub(intersection, true)
-
 	smooth := ts.FloatScalar(smoothVal)
 	eps := ts.FloatScalar(epsVal)
-	numerator := intersection.MustAdd1(smooth, true)
-	denominator := union.MustAdd1(smooth, true).MustClampMin(eps, true)
+
+	// dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
+	numerator := intersection.MustMul1(ts.FloatScalar(2), true).MustAdd1(smooth, true)
+	denominator := cardinality.MustAdd1(smooth, true).MustClampMin(eps, true)
 
 	score := numerator.MustDiv(denominator, true)
 	denominator.MustDrop()
@@ -50,11 +48,12 @@ func softJaccardScore(output, target *ts.Tensor, smoothVal float64, epsVal float
 	return score, nil
 }
 
-// JaccardLoss (JaccardIndex, IoU) calculates the ratio of intersection over union.
-//
-// Ref. https://en.wikipedia.org/wiki/Jaccard_index
-func JaccardLoss(logits, target *ts.Tensor, opts ...Option) *ts.Tensor{
 
+// DiceCoefficient measures the overlap between 2 masks - target and predict mask where
+// 1 is perfect overlap while 0 indicates non-overlap.
+//
+// Dice Coefficient = (2 x Intersection)/(Union + Intersection) = (2xTP)/(2xTP + FN + FP)
+func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
 	// Check dim
 	if logits.MustSize()[0] != target.MustSize()[0]{
 		err := fmt.Errorf("Expected same Dim 0 of inputs. Got %v and %v\n", logits.MustSize(), target.MustSize())
@@ -63,7 +62,7 @@ func JaccardLoss(logits, target *ts.Tensor, opts ...Option) *ts.Tensor{
 	}
 
 	dtype := target.DType()
-	options := defaultOptions()
+	options := defaultMetricOptions()
 	for _, o := range opts{
 		o(options)
 	}
@@ -117,51 +116,32 @@ func JaccardLoss(logits, target *ts.Tensor, opts ...Option) *ts.Tensor{
 	}
 
 	// scores shape = [classes] if `MultiClassMode` or `MultiLabelMode` or [1] if `BinaryMode`
-	scores, err := softJaccardScore(yPred, yTrue, options.Smooth, options.Eps, dims)
+	scores, err := softDiceScore(yPred, yTrue, options.Smooth, options.Eps, dims)
 	if err != nil{
 		// return nil, err
 		log.Fatal(err)
 	}
 
-	var loss *ts.Tensor
-	eps := ts.FloatScalar(options.Eps)
-	switch options.LogLoss{
-	case true:
-		// loss = -torch.log(scores.clamp_min(self.eps))
-		loss = scores.MustClampMin(eps, true).MustLog(true).MustMul1(ts.FloatScalar(-1), true)
-	case false:
-		// loss = 1.0 - scores
-		loss = scores.MustMul1(ts.FloatScalar(-1), true).MustAdd1(ts.FloatScalar(1), true)
-	}
+	coeff := scores.MustMean(dtype, true)
+	
+	retVal := coeff.Float64Values()[0]
+	coeff.MustDrop()
 
-	// IoU loss is defined for non-empty classes
-	// So we zero contribution of channel that does not have true pixels
-	// NOTE: A better workaround would be to use loss term `mean(y_pred)`
-	// for this case, however it will be a modified jaccard loss
-
-	// mask = y_true.sum(dims) > 0
-	yTrueSum := yTrue.MustSum1(dims, false, dtype, false)
-	mask := yTrueSum.MustGt(ts.FloatScalar(0), true).MustTotype(gotch.Float, true)
-  // loss *= mask.float()
-	loss1 := loss.MustMul(mask, true)
-	mask.MustDrop()
-
-	// if self.classes is not None:
-			// loss = loss[self.classes]
-  // return loss.mean()
-	var res *ts.Tensor
-	if options.Classes != nil{
-		idx := ts.MustOfSlice(options.Classes)
-		l := loss1.MustIndexSelect(0, idx, true)
-		idx.MustDrop()
-		res = l.MustMean(dtype, true)
-	} else {
-		res = loss1.MustMean(dtype, true)
-	}
-
-	yTrue.MustDrop()
-	yPred.MustDrop()
-
-	return res
+	return retVal
 }
 
+
+// DiceCoefficientMetric
+type DiceCoefficientMetric struct{}
+
+func(m *DiceCoefficientMetric) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64{
+	return DiceCoefficient(logits, target, opts...)
+}
+
+func (m *DiceCoefficientMetric) Name() string{
+	return "dice_coefficient"
+}
+
+func NewDiceCoefficientMetric() Metric{
+	return &DiceCoefficientMetric{}
+}
