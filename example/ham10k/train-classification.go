@@ -91,8 +91,8 @@ func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 	// }
 	scheduler := CustomScheduler(optimizer)
 
-	var metrics []lab.Metric = []lab.Metric{NewSkinF1(logger, int(cfg.Model.Params.NumClasses))}
-	var validMetric lab.Metric = NewSkinF1(logger, int(cfg.Model.Params.NumClasses))
+	var metrics []lab.Metric = []lab.Metric{NewSkinAccuracy()}
+	var validMetric lab.Metric = NewSkinAccuracy()
 	evaluator, err := lab.NewEvaluator(cfg, validLoader, metrics, validMetric)
 	if err != nil{
 		log.Fatal(err)

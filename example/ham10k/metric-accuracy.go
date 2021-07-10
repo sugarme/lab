@@ -22,7 +22,7 @@ func(m *SkinAccuracy) Calculate(logits, target *ts.Tensor, opts ...lab.MetricOpt
 	return 0
 }
 
-func NewSkinAccuracy(logger *lab.Logger, classes int) lab.Metric{
+func NewSkinAccuracy() lab.Metric{
 	return &SkinAccuracy{}
 }
 
