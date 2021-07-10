@@ -87,11 +87,12 @@ func train(cfg *lab.Config, isFull bool) {
 		log.Fatal(err)
 	}
 
-	scheduler, err := b.BuildScheduler(optimizer)
-	if err != nil {
-		err = fmt.Errorf("Building scheduler failed: %w", err)
-		log.Fatal(err)
-	}
+	// scheduler, err := b.BuildScheduler(optimizer)
+	// if err != nil {
+		// err = fmt.Errorf("Building scheduler failed: %w", err)
+		// log.Fatal(err)
+	// }
+	scheduler := CustomScheduler(optimizer)
 
 	var metrics []lab.Metric
 	for _, name := range cfg.Evaluation.Params.Metrics{

@@ -121,6 +121,8 @@ func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
 		// return nil, err
 		log.Fatal(err)
 	}
+	yPred.MustDrop()
+	yTrue.MustDrop()
 
 	coeff := scores.MustMean(dtype, true)
 	

@@ -122,6 +122,9 @@ func JaccardIndex(logits, target *ts.Tensor, opts ...MetricOption) float64{
 		// return nil, err
 		log.Fatal(err)
 	}
+	
+	yPred.MustDrop()
+	yTrue.MustDrop()
 
 	jaccard := scores.MustMean(dtype, true)
 

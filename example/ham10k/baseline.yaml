@@ -90,7 +90,10 @@ optimizer:
 
 scheduler:
   # name: CosineAnnealingWarmRestarts
-  name: None
+  # name: StepLR
+  # name: ReduceLROnPlateau
+  # name: CosineAnnealingLR
+  name: CustomLR
   params:
     final_lr: 1.0e-8
     num_snapshots: 5

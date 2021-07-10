@@ -181,14 +181,6 @@ func(lt *LossTracker) SaveValidLossesToCSV(saveDir string) error{
 	return nil
 }
 
-func mean(vals []float64) float64{
-	var cum float64
-	for _, v := range vals{
-		cum += v
-	}
-	return cum/float64(len(vals))
-}
-
 // Trainer holds data and methods to train model.
 type Trainer struct {
 	Loader    *dutil.DataLoader
@@ -393,7 +385,7 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 		t.TimeTracker.LastCheck = time.Now()
 
 		// Reset best model if using cosine-annealing-warm-restarts
-		if t.Scheduler.FuncName == "CosineAnnealingWarmRestarts"   && t.Scheduler.LRScheduler != nil{
+		if t.Scheduler.Name == "CosineAnnealingWarmRestarts"   && t.Scheduler.LRScheduler != nil{
 			// TODO. How to do this.
 			// if t.CurrentEpoch%t.Scheduler.T0 == 0 {
 			// t.Evaluator.ResetBest()
@@ -423,7 +415,7 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 
 func (t *Trainer) SchedulerStep() {
 	switch {
-	case t.Scheduler.FuncName == "CosineAnnealingWarmRestarts":
+	case t.Scheduler.Name == "CosineAnnealingWarmRestarts":
 		epoch := t.CurrentEpoch + t.Steps/t.StepsPerEpoch
 		t.Scheduler.Step(nn.WithLastEpoch(epoch))
 	default:

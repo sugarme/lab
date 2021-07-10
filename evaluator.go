@@ -250,9 +250,6 @@ func(e *Evaluator) calculateMetrics(logits, target *ts.Tensor) (map[string]float
 	validMetric := metrics[e.ValidMetric.Name()]
 	metrics["vm"] = validMetric
 
-	metrics["epoch"] = float64(e.Epoch)
-	e.History = append(e.History, metrics)
-
 	return metrics, validMetric, nil
 }
 
@@ -327,5 +324,24 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 
 	eval.ResetBest()
 	return eval, nil
+}
+
+func mean(vals []float64) float64{
+	n := len(vals)
+	var cum float64
+	for _, v := range vals{
+		// skip NaN value
+		if math.IsNaN(v){
+			n = n - 1
+			continue
+		}
+		cum += v
+	}
+
+	if n <= 0{
+		return 0
+	}
+	res := cum/float64(n)
+	return res
 }
 

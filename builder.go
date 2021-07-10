@@ -3,6 +3,7 @@ package lab
 import (
 	// "log"
 	"fmt"
+	"math"
 
 	"github.com/sugarme/gotch/dutil"
 
@@ -179,6 +180,7 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 	// TODO.
 	name := b.Config.Scheduler.Name
 	var s *nn.LRScheduler
+	var update string
 	switch name {
 	case "OneCycleLR":
 		maxLR := b.Config.Scheduler.Params.MaxLR
@@ -187,19 +189,53 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 		epochs := b.Config.Train.Params.Epochs
 		stepPerEpoch := int(b.Config.Train.BatchSize)
 		s = nn.NewOneCycleLR(opt, maxLR, nn.WithOneCycleFinalDivFactor(finalLR), nn.WithOneCyclePctStart(pctStart), nn.WithOneCycleEpochs(epochs), nn.WithOneCycleStepsPerEpoch(stepPerEpoch)).Build()
+		update = "on_batch"
 	case "CosineAnnealingWarmRestarts":
 		t0 := 10
 		tMult := 1
 		etaMin := 0.001
 		s = nn.NewCosineAnnealingWarmRestarts(opt, t0, nn.WithTMult(tMult), nn.WithEtaMin(etaMin)).Build()
-	case "StepLR":
-		stepSize := 1000
-		gamma := 0.0001
+		update = "on_batch"
+	case "StepLR": // reduce LR by 0.1 every 10 epochs
+		stepSize := 10
+		gamma := 0.1
 		s = nn.NewStepLR(opt, stepSize, gamma).Build()
+		update = "on_epoch"
+	case "LambdaLR":
+		ld1 := func(epoch interface{}) float64 {
+			return float64(epoch.(int) / 30)
+		}
+		s = nn.NewLambdaLR(opt, []nn.LambdaFn{ld1}).Build()
+		update = "on_epoch"
+	case "MultiplicativeLR":
+		ld1 := func(epoch interface{}) float64 {
+			e := float64(epoch.(int))
+			return math.Pow(2, e) // 2 ** epoch
+		}
+		s = nn.NewMultiplicativeLR(opt, []nn.LambdaFn{ld1}).Build()
+		update = "on_epoch"
+	case "ExponentialLR":
+		gamma := 0.1
+		s = nn.NewExponentialLR(opt, gamma).Build()
+		update = "on_epoch"
+	case "CosineAnnealingLR":
+		steps := 10
+		s = nn.NewCosineAnnealingLR(opt, steps, 0.0).Build()
+		update = "on_batch"
+	case "CyclicLR":
+		baseLRs := []float64{0.001}
+		maxLRs := []float64{0.1}
+		s = nn.NewCyclicLR(opt, baseLRs, maxLRs, nn.WithCyclicStepSizeUp(5), nn.WithCyclicMode("triangular")).Build()
+		update = "on_epoch"
+	case "ReduceLROnPlateau":
+		s = nn.NewReduceLROnPlateau(opt).Build()
+		update = "on_valid"
+	default:
+		err := fmt.Errorf("BuildScheduler failed: Unsupported LR scheduler: %q\n", name)
+		return nil, err
 	}
 
-	funcName := name
-	update := "on_batch"
+	scheduler := NewScheduler(s, name, update)
 
-	return &Scheduler{s, update, funcName}, nil
+	return scheduler, nil
 }
