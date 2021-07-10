@@ -1,0 +1,1 @@
+Sample of training output

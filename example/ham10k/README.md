@@ -2,9 +2,11 @@
 
 This is a demonstration of using [sugarme/lab](https://github.com/sugarme/lab) toolkits to train image segmentation and classification tasks on [HAM10000 dataset](https://arxiv.org/abs/1803.10417).
 
+A sample of training output can be found at [checkpoint/sample](checkpoint/sample)
+
 ## Retrieve data
 
-The dataset can be downloaded from [Kaggle Ham10000 dataset of images and masks] (https://www.kaggle.com/surajghuwalewala/ham1000-segmentation-and-classification). Masking images are created by a single dermatologist [Philipp Tschandl](https://www.kaggle.com/tschandl/ham10000-lesion-segmentations). 
+The dataset can be downloaded from [Kaggle Ham10000 dataset of images and masks](https://www.kaggle.com/surajghuwalewala/ham1000-segmentation-and-classification). Masking images are created by a single dermatologist [Philipp Tschandl](https://www.kaggle.com/tschandl/ham10000-lesion-segmentations). 
 
 Total samples = 10,015 images.
 
