@@ -12,8 +12,8 @@ dataset:
   inner_fold: 0
   outer_fold: 0
   outer_only: true
-  data_dir: ["data/10k"]
-  csv_filename: data/ham10k.csv 
+  data_dir: ["data"]
+  csv_filename: data/GroundTruth.csv 
 
 
 transform:
@@ -66,7 +66,7 @@ evaluation:
   batch_size: 1
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/full-data
+    save_checkpoint_dir: checkpoint/test
     save_best: true
     prefix: unet-resnet34
     metrics: [dice_coefficient, jaccard_index]

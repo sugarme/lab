@@ -3,26 +3,18 @@ seed: 42
 slack_url: "https://hooks.slack.com/services/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"
 
 dataset:
-  name: MelDataset
+  name: SkinDataset
   params:
     flip: true
     verbose: true
-    square: true
-    square_tta: 1
-  inner_fold: 0
-  outer_fold: 0
-  outer_only: true
-  data_dir: ["data/10k"]
-  csv_filename: data/ham10k.csv 
-
+  data_dir: ["data/images"]
+  csv_filename: data/GroundTruth.csv 
 
 transform:
   augment: NONE
   params:
     n: 3
     m: 12.0
-  num_workers: 0
-  pad_ratio: null
   resize_to: [224, 224]
   preprocess:
     image_range: [0, 255]
@@ -32,15 +24,14 @@ transform:
 
 
 model:
-  name: UNet
+  name: EffNet
   params:
-    backbone: resnet34_unet
+    backbone: tf_efficientnet_b6_ns
     pretrained: true
     pretrained_path: "pretrained"
-    num_classes: 23
+    num_classes: 7
     dropout: 0.2
     multisample_dropout: true
-
 
 find_lr: # this is its own mode 
   params:
@@ -48,7 +39,6 @@ find_lr: # this is its own mode
     end_lr: 1
     num_iter: 500
     save_fig: true
-
 
 train:
   batch_size: 16
@@ -61,39 +51,26 @@ train:
     verbosity: 100
     amp: false
 
-
 evaluation:
   batch_size: 1
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/full-data
+    save_checkpoint_dir: checkpoint/classification
     save_best: true
     prefix: effnet
-    metrics: [dice_coefficient, jaccard_index]
-    valid_metric: dice_coefficient
-    mode: max
-    improve_thresh: 1.0e-6
+    metrics: [skin_accuracy]
+    valid_metric: skin_accuracy
 
 loss:
-  # name: BCELoss
-  name: DiceLoss
+  name: CrossEntropyLoss
   params:
-
 
 optimizer:
   name: AdamW
-  # name: SGD
   params:
     lr: 3.0e-4
     weight_decay: 5.0e-4
 
-
 scheduler:
-  # name: CosineAnnealingWarmRestarts
-  # name: None
   name: CustomLR
-  params:
-    final_lr: 1.0e-8
-    num_snapshots: 5
-
 

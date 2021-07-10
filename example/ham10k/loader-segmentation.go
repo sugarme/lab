@@ -308,8 +308,8 @@ func rgb2GrayScale(x *ts.Tensor) (*ts.Tensor, error) {
 
 // Make train, valid for full datasets (10k)
 func makeFullDatasets(dataDir string) ([]Sample, []Sample, error){
-	inputDir := fmt.Sprintf("%s/trainx", dataDir)
-	targetDir := fmt.Sprintf("%s/trainy", dataDir)
+	inputDir := fmt.Sprintf("%s/images", dataDir)
+	targetDir := fmt.Sprintf("%s/masks", dataDir)
 
 	var data []Sample
 
@@ -384,3 +384,4 @@ func makeFullDatasets(dataDir string) ([]Sample, []Sample, error){
 
 	return trainData, validData, nil
 }
+

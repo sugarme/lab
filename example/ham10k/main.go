@@ -124,9 +124,23 @@ func main() {
 		if err != nil{
 			log.Fatal(err)
 		}
-
 	case "check-data":
 		_, _, err = makeFullDatasets("./data/10k")
+	case "preprocess":
+		_, _, err := preprocess(cfg)
+		if err != nil{
+			log.Fatal(err)
+		}
+
+	case "train-classification":
+		ds, folds, err := preprocess(cfg)
+		if err != nil{
+			log.Fatal(err)
+		}
+		trainClassification(cfg, ds, folds)
+
+	default:
+		log.Fatalf("Unsupported task: %s\n", task)
 	}
 }
 
