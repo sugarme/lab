@@ -19,16 +19,16 @@ dataset:
 transform:
   augment: NONE
   params:
-    n: 3
-    m: 12.0
-  num_workers: 0
-  pad_ratio: null
+    # n: 3
+    # m: 12.0
+  # num_workers: 0
+  # pad_ratio: null
   resize_to: [224, 224]
-  preprocess:
-    image_range: [0, 255]
-    input_range: [0, 1]
-    mean: [0.485, 0.456, 0.406]
-    sdev: [0.229, 0.224, 0.225]
+  # preprocess:
+    # image_range: [0, 255]
+    # input_range: [0, 1]
+    # mean: [0.485, 0.456, 0.406]
+    # sdev: [0.229, 0.224, 0.225]
 
 
 model:
@@ -37,9 +37,9 @@ model:
     backbone: resnet34_unet
     pretrained: true
     pretrained_path: "pretrained"
-    num_classes: 23
-    dropout: 0.2
-    multisample_dropout: true
+    # num_classes: 23
+    # dropout: 0.2
+    # multisample_dropout: true
 
 
 find_lr: # this is its own mode 
@@ -68,32 +68,28 @@ evaluation:
   params:
     save_checkpoint_dir: checkpoint/full-data
     save_best: true
-    prefix: effnet
+    prefix: unet-resnet34
     metrics: [dice_coefficient, jaccard_index]
     valid_metric: dice_coefficient
-    mode: max
-    improve_thresh: 1.0e-6
+    # mode: max
+    # improve_thresh: 1.0e-6
 
 loss:
-  # name: BCELoss
   name: DiceLoss
   params:
 
 
 optimizer:
   name: AdamW
-  # name: SGD
   params:
     lr: 3.0e-4
     weight_decay: 5.0e-4
 
 
 scheduler:
-  # name: CosineAnnealingWarmRestarts
-  # name: None
   name: CustomLR
   params:
-    final_lr: 1.0e-8
-    num_snapshots: 5
+    # final_lr: 1.0e-8
+    # num_snapshots: 5
 
 
