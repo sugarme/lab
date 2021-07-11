@@ -316,15 +316,6 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 			logits.MustDrop()
 			loss.MustDrop()
 
-
-			stepTime := time.Since(stepStart)
-			t.TimeTracker.SetTime(dataTime, stepTime)
-
-			// Print progression
-			if t.Steps%t.Verbosity == 0 && t.Steps > 0 {
-				t.PrintProgress()
-			}
-
 			/*
 
 			// TODO. delete this. Just for test validating
@@ -350,6 +341,14 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 			*/
 
 			t.Steps += 1
+
+			stepTime := time.Since(stepStart)
+			t.TimeTracker.SetTime(dataTime, stepTime)
+
+			// Print progression
+			if t.Steps%t.Verbosity == 0 && t.Steps > 0 {
+				t.PrintProgress()
+			}
 			if t.Scheduler.Update == "on_batch" && t.Scheduler.LRScheduler != nil{
 				t.Scheduler.Step()
 			}

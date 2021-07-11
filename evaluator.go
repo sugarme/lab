@@ -87,11 +87,29 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 			device = gotch.CudaIfAvailable()
 		}
 
-		// NOTE. For now, batchSize = 1, dataItem has type []ts.Tensor
-		input := dataItem.([]ts.Tensor)[0].MustUnsqueeze(0, true).MustTo(device, true)
-		target := dataItem.([]ts.Tensor)[1].MustTo(device, true)
+		// // NOTE. For now, batchSize = 1, dataItem has type []ts.Tensor
+		// input := dataItem.([]ts.Tensor)[0].MustUnsqueeze(0, true).MustTo(device, true)
+		// target := dataItem.([]ts.Tensor)[1].MustTo(device, true)
+		var (
+			batch  []ts.Tensor
+			labels []ts.Tensor
+		)
+		batchSize := len(dataItem.([][]ts.Tensor))	
+		for i := 0; i < batchSize; i++ {
+			batch = append(batch, dataItem.([][]ts.Tensor)[i][0])
+			labels = append(labels, dataItem.([][]ts.Tensor)[i][1])
+		}
+		batchTs := ts.MustStack(batch, 0)
+		labelTs := ts.MustStack(labels, 0).MustSqueeze(true)
+		for i := 0; i < len(batch); i++ {
+			batch[i].MustDrop()
+			labels[i].MustDrop()
+		}
 
-		logits := model.ForwardT(input, false).MustDetach(true).MustSqueeze(true)
+		input := batchTs.MustDetach(true).MustTo(device, true)
+		target := labelTs.MustDetach(true).MustTo(device, true)
+
+		logits := model.ForwardT(input, false).MustDetach(true)
 
 		// loss
 		loss := criterion(logits, target)
@@ -242,9 +260,9 @@ func(e *Evaluator) calculateMetrics(logits, target *ts.Tensor) (map[string]float
 	metrics := make(map[string]float64, 0)
 
 	for _, m := range e.Metrics{
-		l := m.Calculate(logits, target, WithMetricThreshold(e.Threshold))
+		val := m.Calculate(logits, target, WithMetricThreshold(e.Threshold))
 		n := m.Name()
-		metrics[n] = l
+		metrics[n] = val
 	}
 
 	validMetric := metrics[e.ValidMetric.Name()]

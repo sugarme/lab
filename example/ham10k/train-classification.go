@@ -72,11 +72,25 @@ func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 		cfg.Train.Params.StepsPerEpoch = trainData.Len() / int(cfg.Train.BatchSize)
 	}
 
-	criterion, err := b.BuildLoss()
-	if err != nil {
-		err = fmt.Errorf("Building loss function failed: %w", err)
-		log.Fatal(err)
+	// criterion, err := b.BuildLoss()
+	// if err != nil {
+		// err = fmt.Errorf("Building loss function failed: %w", err)
+		// log.Fatal(err)
+	// }
+
+
+	classes := []string{
+		"MEL", 	// 0.4618
+		"NV", 		// 0.0767
+		"BCC", 	// 1.0000
+		"AKIEC", // 1.5719
+		"BKL", 	// 0.4677
+		"DF", 		// 4.4700
+		"VASC", 	// 3.6197
 	}
+	classWeights := classWeights(trainSet, classes)
+	logger.Printf("class weights: %0.4f\n", classWeights)
+	criterion := CustomCrossEntropyLoss(WithLossFnWeights(classWeights))
 
 	optimizer, err := b.BuildOptimizer(model.Weights)
 	if err != nil {
@@ -116,5 +130,3 @@ func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 
 	trainer.Train(cfg)
 }
-
-

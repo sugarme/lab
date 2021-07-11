@@ -104,6 +104,14 @@ func preprocess(cfg *lab.Config)([]SkinDz, []dutil.Fold, error){
 		return nil, nil, err
 	}
 
+	// Print statitics
+	printStat(ds, classes)
+
+	trainSet := getSet(folds[0].Train, ds)
+	validSet := getSet(folds[0].Test, ds)
+	printStat(trainSet, classes)
+	printStat(validSet, classes)
+
 	return ds, folds, nil
 }
 
@@ -239,3 +247,43 @@ func getSet(indices []int, data []SkinDz) []SkinDz{
 	return ds
 }
 
+func printStat(ds []SkinDz, classNames []string){
+	classes := make(map[string]int, len(classNames))
+	n := len(ds)
+	for _, v := range ds{
+		name := v.Class
+		if _, ok := classes[name]; ok{
+			classes[name] += 1
+		} else {
+			classes[name] = 1
+		}
+	}
+
+	for _, name := range classNames{
+		count := classes[name]
+		freq := float64(count)/float64(n)
+		fmt.Printf("%-20s\t%0.4f(%4d/%d)\n", name, freq, count, n)
+	}
+	fmt.Println()
+}
+
+func classWeights(ds []SkinDz, classNames []string) []float64{
+	classes := make(map[string]int, len(classNames))
+	for _, v := range ds{
+		name := v.Class
+		if _, ok := classes[name]; ok{
+			classes[name] += 1
+		} else {
+			classes[name] = 1
+		}
+	}
+
+	weights := make([]float64, len(classNames))
+	classWeights := lab.ClassWeights(classes)
+	for i := 0; i < len(classNames); i++{
+		name := classNames[i]
+		weights[i] = classWeights[name]
+	}
+
+	return weights
+}

@@ -32,9 +32,12 @@ func (b *Builder) BuildDataLoader(data dutil.Dataset, mode string) (*dutil.DataL
 	case "train":
 		shuffle = true
 		batchSize = b.Config.Train.BatchSize
-	default:
+	case "valid":
 		shuffle = false
 		batchSize = b.Config.Evaluation.BatchSize
+	default:
+		err := fmt.Errorf("Unsuported mode: %q\n", mode)
+		return nil, err
 	}
 
 	n := data.Len()

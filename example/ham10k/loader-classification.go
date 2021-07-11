@@ -97,6 +97,9 @@ func NewSkinDataset(data []SkinDz, cfg *lab.Config, isTrain bool) (dutil.Dataset
 				return nil, err
 			}
 
+		case "CustomAugment":
+			transformer, err = CustomAugment()
+
 			// TODO: continue
 		default:
 			fmt.Printf("No transform method found...\n")

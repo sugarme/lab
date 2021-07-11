@@ -1,6 +1,6 @@
 seed: 42
 
-slack_url: "https://hooks.slack.com/services/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"
+# slack_url: "https://hooks.slack.com/services/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"
 
 dataset:
   name: SkinDataset
@@ -11,7 +11,7 @@ dataset:
   csv_filename: data/GroundTruth.csv 
 
 transform:
-  augment: NONE
+  augment: RandAugment
   params:
     n: 3
     m: 12.0
@@ -52,7 +52,7 @@ train:
     amp: false
 
 evaluation:
-  batch_size: 1
+  batch_size: 16
   evaluator: Evaluator
   params:
     save_checkpoint_dir: checkpoint/classification
@@ -62,13 +62,14 @@ evaluation:
     valid_metric: skin_accuracy
 
 loss:
+  # name: CustomCrossEntropyLoss
   name: CrossEntropyLoss
   params:
 
 optimizer:
-  name: AdamW
+  name: Adam
   params:
-    lr: 3.0e-4
+    lr: 3.0e-5
     weight_decay: 5.0e-4
 
 scheduler:
