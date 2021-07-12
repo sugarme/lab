@@ -112,6 +112,9 @@ func preprocess(cfg *lab.Config)([]SkinDz, []dutil.Fold, error){
 	printStat(trainSet, classes)
 	printStat(validSet, classes)
 
+	fmt.Printf("Balanced Sampling:\n")
+	blancedSampling(trainSet, classes)
+
 	return ds, folds, nil
 }
 
@@ -285,5 +288,35 @@ func classWeights(ds []SkinDz, classNames []string) []float64{
 		weights[i] = classWeights[name]
 	}
 
+	return weights
+}
+
+func blancedSampling(ds []SkinDz, classNames []string) []int{
+	classes := make(map[string]int, len(classNames))
+	for _, v := range ds{
+		name := v.Class
+		if _, ok := classes[name]; ok{
+			classes[name] += 1
+		} else {
+			classes[name] = 1
+		}
+	}
+
+	maxCount := 0
+	for _, c := range classes{
+		if c > maxCount {
+			maxCount = c
+		}
+	}
+
+	weights := make([]int, len(classNames))
+	for i := 0; i < len(classNames); i++{
+		name := classNames[i]
+		count := classes[name]
+		w := float64(maxCount)/float64(count)
+		weights[i] = int(w)
+		fmt.Printf("%-20s\t %4d(%0.4f)", name, int(float64(count) * w), w)
+	}
+	fmt.Println()
 	return weights
 }

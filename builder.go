@@ -71,8 +71,13 @@ func (b *Builder) BuildModel(configOpt ...ModelConfig) (*Model, error) {
 	case "UNet":
 		module = lib.UNet(vs.Root(), cfg.Params.Backbone)
 
-	// TODO: continue
+	case "ResNet":
+		module = lib.ResNet(vs.Root(), cfg.Params.NumClasses, cfg.Params.Backbone)
 
+	case "DenseNet":
+		module = lib.DenseNet(vs.Root(), cfg.Params.NumClasses, cfg.Params.Backbone)
+
+	// TODO: continue
 	default:
 		err := fmt.Errorf("Invalid Model Class %q", mclass)
 		return nil, err

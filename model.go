@@ -24,6 +24,17 @@ var ModelZoo map[string]string = map[string]string{
 	"tf_efficientnet_b6_ns": "EffNet",
 	"tf_efficientnet_b7_ns": "EffNet",
 
+	"resnet18": "ResNet",
+	"resnet34": "ResNet",
+	"resnet50": "ResNet",
+	"resnet101": "ResNet",
+	"resnet152": "ResNet",
+
+	"densenet121": "DenseNet",
+	"densenet161": "DenseNet",
+	"densenet169": "DenseNet",
+	"densenet201": "DenseNet",
+
 	"resnet34_unet": "UNet",
 }
 

@@ -38,6 +38,15 @@ var PretrainedModels map[string]resource = map[string]resource{
 		file: "resnet34.bin",
 		url: "https://PRETRAINED_MODEL_FILES",
 	},
+
+	"resnet34": {
+		file: "resnet34.bin",
+		url: "https://PRETRAINED_MODEL_FILES",
+	},
+	"resnet50": {
+		file: "resnet50.bin",
+		url: "https://PRETRAINED_MODEL_FILES",
+	},
 }
 
 type PretrainedOptions struct{

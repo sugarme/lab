@@ -25,7 +25,9 @@ transform:
 
 model:
   name: EffNet
+  # name: ResNet
   params:
+    # backbone: resnet50
     backbone: tf_efficientnet_b6_ns
     pretrained: true
     pretrained_path: "pretrained"
@@ -35,7 +37,7 @@ model:
 
 find_lr: # this is its own mode 
   params:
-    start_lr: 1.0e-7
+    start_lr: 2.0e-6
     end_lr: 1
     num_iter: 500
     save_fig: true
@@ -58,6 +60,7 @@ evaluation:
     save_checkpoint_dir: checkpoint/classification
     save_best: true
     prefix: effnet
+    # prefix: resnet
     metrics: [skin_accuracy]
     valid_metric: skin_accuracy
 
@@ -69,7 +72,8 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 3.0e-5
+    # lr: 1.0e-6
+    lr: 1.0e-5
     weight_decay: 5.0e-4
 
 scheduler:
