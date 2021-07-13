@@ -120,6 +120,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case "check-model":
+		// checkModel("./pretrained/densenet121.bin")
 		err := checkModel(cfg)
 		if err != nil{
 			log.Fatal(err)
@@ -127,7 +128,8 @@ func main() {
 	case "check-data":
 		_, _, err = makeFullDatasets("./data/10k")
 	case "preprocess":
-		_, _, err := preprocess(cfg)
+		// _, _, err := preprocess(cfg)
+		_, _, err := makeClassificationDatasets(cfg)
 		if err != nil{
 			log.Fatal(err)
 		}

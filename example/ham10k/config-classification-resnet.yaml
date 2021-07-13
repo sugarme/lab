@@ -11,7 +11,7 @@ dataset:
   csv_filename: data/GroundTruth.csv 
 
 transform:
-  augment: RandAugment
+  augment: CustomAugment
   params:
     n: 3
     m: 12.0
@@ -24,12 +24,10 @@ transform:
 
 
 model:
-  name: EffNet
-  # name: ResNet
+  name: ResNet
   params:
-    # backbone: resnet50
-    backbone: tf_efficientnet_b6_ns
-    pretrained: true
+    backbone: resnet34
+    pretrained: false
     pretrained_path: "pretrained"
     num_classes: 7
     dropout: 0.2
@@ -37,45 +35,42 @@ model:
 
 find_lr: # this is its own mode 
   params:
-    start_lr: 2.0e-6
+    start_lr: 1.0e-7
     end_lr: 1
     num_iter: 500
     save_fig: true
 
 train:
-  batch_size: 16
+  batch_size: 128
   trainer: Trainer
   params:
     gradient_accumulation: 1
-    num_epochs: 30
+    num_epochs: 100
     steps_per_epoch: 0
     validate_interval: 1
     verbosity: 100
     amp: false
 
 evaluation:
-  batch_size: 16
+  batch_size: 128
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/classification
+    save_checkpoint_dir: checkpoint/resnet34-nopretrained
     save_best: true
-    prefix: effnet
-    # prefix: resnet
+    prefix: resnet
     metrics: [skin_accuracy]
     valid_metric: skin_accuracy
 
 loss:
-  # name: CustomCrossEntropyLoss
   name: CrossEntropyLoss
   params:
 
 optimizer:
   name: Adam
   params:
-    # lr: 1.0e-6
-    lr: 1.0e-5
-    weight_decay: 5.0e-4
+    lr: 1.0e-2
+    # weight_decay: 5.0e-4
 
 scheduler:
-  name: CustomLR
+  name: None
 

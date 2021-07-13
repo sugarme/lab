@@ -47,6 +47,11 @@ var PretrainedModels map[string]resource = map[string]resource{
 		file: "resnet50.bin",
 		url: "https://PRETRAINED_MODEL_FILES",
 	},
+
+	"densenet121": {
+		file: "densenet121.bin",
+		url: "https://PRETRAINED_MODEL_FILES",
+	},
 }
 
 type PretrainedOptions struct{

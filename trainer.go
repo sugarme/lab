@@ -257,7 +257,7 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 	cfgMsg := fmt.Sprintf("%+v\n", cfg)
 	t.Logger.Printf(cfgMsg)
 	t.Logger.Printf("----------\n\n")
-	epochMsg := fmt.Sprintf("Steps per epoch: %v - Epochs: %v - Total steps: %v\n", t.StepsPerEpoch, t.Epochs, t.TotalSteps)
+	epochMsg := fmt.Sprintf("Sample size: %d - Steps per epoch: %v - Epochs: %v - Total steps: %v\n", t.Loader.Len() ,t.StepsPerEpoch, t.Epochs, t.TotalSteps)
 	t.Logger.Printf(epochMsg)
 
 	t.Logger.SendSlack("CONFIGURATION:")

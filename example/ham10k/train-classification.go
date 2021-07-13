@@ -12,9 +12,10 @@ import (
 func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 	fmt.Printf("Start training...\n")
 
-	// Fold 1
-	trainSet := getSet(folds[0].Train, data)
-	validSet := getSet(folds[0].Test, data)
+	// // Fold 1
+	// trainSet := getSet(folds[0].Train, data)
+	// validSet := getSet(folds[0].Test, data)
+	trainSet, validSet, err := makeClassificationDatasets(cfg)
 
 	trainData, err := NewSkinDataset(trainSet, cfg, true)
 	if err != nil{
@@ -72,13 +73,13 @@ func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 		cfg.Train.Params.StepsPerEpoch = trainData.Len() / int(cfg.Train.BatchSize)
 	}
 
-	// criterion, err := b.BuildLoss()
-	// if err != nil {
-		// err = fmt.Errorf("Building loss function failed: %w", err)
-		// log.Fatal(err)
-	// }
+	criterion, err := b.BuildLoss()
+	if err != nil {
+		err = fmt.Errorf("Building loss function failed: %w", err)
+		log.Fatal(err)
+	}
 
-
+	/*
 	classes := []string{
 		"MEL", 	// 0.4618
 		"NV", 		// 0.0767
@@ -92,6 +93,8 @@ func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 	logger.Printf("class weights: %0.4f\n", classWeights)
 	criterion := CustomCrossEntropyLoss(WithLossFnWeights(classWeights))
 
+	*/
+
 	optimizer, err := b.BuildOptimizer(model.Weights)
 	if err != nil {
 		err = fmt.Errorf("Building optimizer failed: %w", err)
@@ -103,7 +106,8 @@ func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
 		// err = fmt.Errorf("Building scheduler failed: %w", err)
 		// log.Fatal(err)
 	// }
-	scheduler := CustomScheduler(optimizer)
+	// scheduler := CustomScheduler(optimizer)
+	var scheduler *lab.Scheduler  = lab.NewScheduler(nil, "", "")
 
 	var metrics []lab.Metric = []lab.Metric{NewSkinAccuracy()}
 	var validMetric lab.Metric = NewSkinAccuracy()

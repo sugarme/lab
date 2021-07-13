@@ -105,15 +105,12 @@ func preprocess(cfg *lab.Config)([]SkinDz, []dutil.Fold, error){
 	}
 
 	// Print statitics
-	printStat(ds, classes)
+	// printStat(ds, classes)
 
-	trainSet := getSet(folds[0].Train, ds)
-	validSet := getSet(folds[0].Test, ds)
-	printStat(trainSet, classes)
-	printStat(validSet, classes)
-
-	fmt.Printf("Balanced Sampling:\n")
-	blancedSampling(trainSet, classes)
+	// trainSet := getSet(folds[0].Train, ds)
+	// validSet := getSet(folds[0].Test, ds)
+	// printStat(trainSet, classes)
+	// printStat(validSet, classes)
 
 	return ds, folds, nil
 }
@@ -291,7 +288,8 @@ func classWeights(ds []SkinDz, classNames []string) []float64{
 	return weights
 }
 
-func blancedSampling(ds []SkinDz, classNames []string) []int{
+// balancedSampling calculates weights for each class to make balanced sampling.
+func balancedSamplingWeights(ds []SkinDz, classNames []string) map[string]int{
 	classes := make(map[string]int, len(classNames))
 	for _, v := range ds{
 		name := v.Class
@@ -309,14 +307,126 @@ func blancedSampling(ds []SkinDz, classNames []string) []int{
 		}
 	}
 
-	weights := make([]int, len(classNames))
+	weights := make(map[string]int, len(classNames))
 	for i := 0; i < len(classNames); i++{
 		name := classNames[i]
 		count := classes[name]
 		w := float64(maxCount)/float64(count)
-		weights[i] = int(w)
-		fmt.Printf("%-20s\t %4d(%0.4f)", name, int(float64(count) * w), w)
+		weights[name] = int(w)
+		// fmt.Printf("%-20s\t %4d(%0.4f)", name, int(float64(count) * w), w)
 	}
-	fmt.Println()
+	// fmt.Println()
 	return weights
 }
+
+func makeClassificationDatasets(cfg *lab.Config)([]SkinDz, []SkinDz, error){
+	dataDir := cfg.Dataset.DataDir[0]
+	outDir := cfg.Evaluation.Params.SaveCheckpointDir
+	csvFile := cfg.Dataset.CSVFilename
+
+
+	f, err := os.Open(csvFile)
+	if err != nil{
+		err = fmt.Errorf("Open CSV file failed: %w\n", err)
+		return nil, nil, err
+	}
+	defer f.Close()
+	df := dataframe.ReadCSV(f)
+	labelFunc := func(s series.Series) series.Series{
+		name := s.Records()[0]
+		labels := s.Records()[1:]
+		var idx int
+		for i, v := range labels{
+			val, err := strconv.ParseFloat(v, 64)
+			if err != nil{
+				log.Fatal(err)
+			}
+			if val == 1 {
+				idx = i
+				break
+			}
+		}
+		s = s.Subset([]int{0})
+		s.Append(idx)
+		imageFile := fmt.Sprintf("%s/%s.jpg", dataDir, name)
+		s.Append(imageFile)
+		return s
+	}
+
+	df = df.Rapply(labelFunc)
+	classes := []string{
+		"MEL",
+		"NV",
+		"BCC",
+		"AKIEC",
+		"BKL",
+		"DF",
+		"VASC",
+	}
+
+	var ds []SkinDz
+	lines := df.Records()
+	for i, line := range lines{
+		// skip header
+		if i == 0{
+			continue
+		}
+		// name := line[0]
+		label, err := strconv.Atoi(line[1])
+		if err != nil{
+			return nil, nil, err
+		}
+		file := line[2]
+		ds = append(ds, SkinDz{
+			ID: i - 1,
+			Class: classes[label],
+			ClassID: label,
+			File: file,
+		})
+	}
+
+	folds, err := makeFolds(ds, classes)
+	if err != nil{
+		return nil, nil, err
+	}
+
+	saveFile := fmt.Sprintf("%s/data.csv", outDir)
+	err = saveToCSV(ds, saveFile)
+	if err != nil{
+		return nil, nil, err
+	}
+
+	trainSet := getSet(folds[0].Train, ds)
+
+
+	// balanced sampling train dataset
+	data := make(map[string][]SkinDz, len(classes))
+	for _, item := range trainSet{
+		name := item.Class
+		data[name] = append(data[name], item)
+	} 
+
+	weights := balancedSamplingWeights(trainSet, classes)
+	for name, weight := range weights{
+		// weight - 1 : duplication times of subset
+		dupTimes := weight - 1
+		if dupTimes > 0{
+			originSubset := data[name]
+			for i := 0; i < dupTimes; i++{
+				data[name] = append(data[name], originSubset...)
+			}
+		}
+	}
+
+	var balancedTrainSet []SkinDz
+	for _, d := range data{
+		balancedTrainSet = append(balancedTrainSet, d...)
+	}
+
+	validSet := getSet(folds[0].Test, ds)
+	// printStat(validSet, classes)
+	// printStat(balancedTrainSet, classes)
+
+	return balancedTrainSet, validSet, nil
+}
+

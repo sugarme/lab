@@ -58,7 +58,7 @@ func (m *SkinDataset) Item(idx int) (interface{}, error) {
 	imgTs0 := imgTs.MustTo(gotch.CudaIfAvailable(), true)
 
 	var img *ts.Tensor
-	if m.IsTrain && m.Transformer != nil{
+	if m.Transformer != nil{
 		img = m.Transformer.Transform(imgTs0)
 	} else {
 		img = imgTs0.MustShallowClone()
@@ -98,12 +98,21 @@ func NewSkinDataset(data []SkinDz, cfg *lab.Config, isTrain bool) (dutil.Dataset
 			}
 
 		case "CustomAugment":
-			transformer, err = CustomAugment()
+			// transformer, err = CustomAugment()
+			transformer, err = HamAugment()
+			if err != nil {
+				return nil, err
+			}
 
 			// TODO: continue
 		default:
 			fmt.Printf("No transform method found...\n")
 		}
+	} else { // valid set, just normalize
+		// transformer, err = ValidAugment()
+		// if err != nil {
+			// return nil, err
+		// }
 	}
 
 	return &SkinDataset{
