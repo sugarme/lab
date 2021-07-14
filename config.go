@@ -4,9 +4,43 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/sugarme/gotch/vision/aug"
 	"gopkg.in/yaml.v3"
 )
 
+// Dataset Config:
+// ===============
+type DatasetConfig struct {
+		Name   string `yaml:"name"`
+		Params struct {
+			Flip    bool `yaml:"flip"`
+			Verbose bool `yaml:"verbose"`
+		} `yaml:"params"`
+		InnerFold   int      `yaml:"inner_fold"`
+		OuterFold   int      `yaml:"outer_fold"`
+		OuterOnly   bool     `yaml:"outer_only"`
+		DataDir     []string `yaml:"data_dir"`
+		CSVFilename string   `yaml:"csv_filename"`
+}
+
+// Transform Config:
+// =================
+type AugmentOpt struct{
+	Name string `yaml:"name"`
+	Params map[string]interface{} `yaml:"params"`
+}
+
+type TransformConfig struct{
+	IsTransformer bool `yaml:"is_transformer"`
+	TransformerName string `yaml:"transformer_name"`
+	Transformer aug.Transformer `yaml:"transformer"`
+
+	AugmentOpts []AugmentOpt `yaml:"augment_opts"` // Augment options to compose a transformer
+}
+
+
+// Model Config:
+// =============
 type ModelConfig struct {
 	Name   string `yaml:"name"`
 	Params struct {
@@ -19,6 +53,8 @@ type ModelConfig struct {
 	} `yaml:"params"`
 }
 
+// Train Config:
+// ============
 type TrainConfig struct {
 	BatchSize    int64  `yaml:"batch_size"`
 	Trainer      string `yaml:"trainer"`       // Trainer name
@@ -33,53 +69,18 @@ type TrainConfig struct {
 	} `yaml:"params"`
 }
 
-type Transform struct{
-	Augment string `yaml:"augment"`
-	Params struct{
-		N int `yaml:"n"`
-		M int `yaml:"m"`
-	} `yaml:"params"`
-	PadRatio float64 `yaml:"pad_ratio"`
-	ResizeTo []int64 `yaml:"resize_to"`
-	Preprocess struct{
-		ImageRange []int `yaml:"image_range"`
-		InputRange []int `yaml:"input_range"`
-		Mean []float64 `yaml:"mean"`
-		Sdev []float64 `yaml:"sdev"`
-	} `yaml:"preprocess"`
-}
-
-type Config struct {
-	Seed int64 `yaml:"seed"`
-	SlackURL string `yaml:"slack_url"`
-
-	Dataset struct {
-		Name   string `yaml:"name"`
-		Params struct {
-			Flip    bool `yaml:"flip"`
-			Verbose bool `yaml:"verbose"`
-		} `yaml:"params"`
-		InnerFold   int      `yaml:"inner_fold"`
-		OuterFold   int      `yaml:"outer_fold"`
-		OuterOnly   bool     `yaml:"outer_only"`
-		DataDir     []string `yaml:"data_dir"`
-		CSVFilename string   `yaml:"csv_filename"`
-	} `yaml:"dataset"`
-
-	Transform Transform `yaml:"transform"`
-
-	Model ModelConfig `yaml:"model"`
-
-	FindLR struct {
+// FindLR Config:
+// ==============
+type FindLRConfig struct{
 		StartLR float64 `yaml:"start_lr"`
 		EndLR   float64 `yaml:"end_lr"`
 		NumIter int     `yaml:"num_inter"`
 		SaveFig bool    `yaml:"save_fig"`
-	} `yaml:"find_lr"`
+}
 
-	Train TrainConfig `yaml:"train"`
-
-	Evaluation struct {
+// Evaluation Config:
+// ==================
+type EvaluationConfig struct{
 		BatchSize int64  `yaml:"batch_size"`
 		Evaluator string `yaml:"evaluator"`
 		Params    struct {
@@ -91,33 +92,32 @@ type Config struct {
 			Mode              string   `yaml:"mode"`
 			ImproveThresh     float64  `yaml:"improve_thresh"`
 		} `yaml:"params"`
-	} `yaml:"evaluation"`
+}
 
-	Loss struct {
-		Name   string `yaml:"name"`
-		Params struct {
-		} `yaml:"params"`
-	} `yaml:"loss"`
+// Loss Config:
+// ============
+type LossConfig struct{
+	Name string `yaml:"name"`
+	Params map[string]interface{} `yaml:"params"`
+}
 
-	Optimizer struct {
-		Name   string `yaml:"name"`
-		Params struct {
-			Eps         float64 `yaml:"eps"`
-			LR          float64 `yaml:"lr"`
-			WeightDecay float64 `yaml:"weight_decay"`
-		} `yaml:"params"`
-	} `yaml:"optimizer"`
+// Optimizer Config:
+// =================
+type OptimizerConfig struct{
+	Name string `yaml:"name"`
+	Params map[string]interface{} `yaml:"params"`
+}
 
-	Scheduler struct {
-		Name   string `yaml:"name"`
-		Params struct {
-			MaxLR    float64 `yaml:"max_lr"`
-			FinalLR  float64 `yaml:"final_lr"`
-			PctStart float64 `yaml:"pct_start"`
-		} `yaml:"params"`
-	} `yaml:"scheduler"`
+// LRScheduler Config:
+// ===================
+type LRSchedulerConfig struct{
+	Name string `yaml:"name"`
+	Params map[string]interface{} `yaml:"params"`
+}
 
-	Test struct {
+// Test Config:
+// ============
+type TestConfig struct{
 		Checkpoint      string `yaml:"checkpoint"`
 		BatchSize       int64  `yaml:"batch_size"`
 		DataDir         string `yaml:"data_dir"`
@@ -125,7 +125,24 @@ type Config struct {
 		LabelsAvailable string `yaml:"labels_available"`
 		OuterOnly       bool   `yaml:"outer_only"`
 		SaveFile        string `yaml:"save_file"`
-	} `yaml:"test"`
+}
+
+type Config struct {
+	Seed int64 `yaml:"seed"`
+	SlackURL string `yaml:"slack_url"`
+	Dataset DatasetConfig `yaml:"dataset"`
+	Transform struct{
+		Train TransformConfig `yaml:"train"`
+		Valid TransformConfig `yaml:"valid"`
+	} `yaml:"transform"`
+	Model ModelConfig `yaml:"model"`
+	FindLR FindLRConfig `yaml:"find_lr"`
+	Train TrainConfig `yaml:"train"`
+	Evaluation EvaluationConfig `yaml:"evaluation"`
+	Loss LossConfig `yaml:"loss"`
+	Optimizer OptimizerConfig `yaml:"optimizer"`
+	Scheduler LRSchedulerConfig `yaml:"scheduler"`
+	Test TestConfig `yaml:"test"`
 }
 
 // NewConfig returns a new Config struct

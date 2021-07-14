@@ -1,11 +1,11 @@
 package lab
 
 import (
-	// "log"
 	"fmt"
 	"math"
 
 	"github.com/sugarme/gotch/dutil"
+	"github.com/sugarme/gotch/vision/aug"
 
 	"github.com/sugarme/gotch"
 	"github.com/sugarme/gotch/nn"
@@ -155,26 +155,74 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 	fmt.Printf("optimizer params: %+v\n", params)
 	fmt.Printf("optimizer name: %+v\n", name)
 
-	lr := params.LR
+	var lr float64
+	for k, v := range params{
+		switch k{
+		case "lr":
+			lr = v.(float64)
+		}
+	}
+
 	switch name {
 	case "AdamW":
-		opt, err = nn.DefaultAdamWConfig().Build(vs, lr)
+		cfg := nn.DefaultAdamWConfig()
+		for k, v := range params{
+			switch k{
+			case "beta1":
+				cfg.Beta1 = v.(float64)
+			case "beta2":
+				cfg.Beta2 = v.(float64)
+			case "wd":
+				cfg.Wd = v.(float64)
+			}
+		}
+		opt, err := cfg.Build(vs, lr)
 		if err != nil {
 			err = fmt.Errorf("Build AdamW optimizer failed: %w", err)
 			return nil, err
 		}
+		return opt, nil
+
 	case "Adam":
-		opt, err = nn.DefaultAdamConfig().Build(vs, lr)
+		cfg := nn.DefaultAdamConfig()
+		for k, v := range params{
+			switch k{
+			case "beta1":
+				cfg.Beta1 = v.(float64)
+			case "beta2":
+				cfg.Beta2 = v.(float64)
+			case "wd":
+				cfg.Wd = v.(float64)
+			}
+		}
+		opt, err := cfg.Build(vs, lr)
 		if err != nil {
 			err = fmt.Errorf("Build Adam optimizer failed: %w", err)
 			return nil, err
 		}
+		return opt, nil
+
 	case "SGD":
-		opt, err = nn.DefaultSGDConfig().Build(vs, lr)
+		cfg := nn.DefaultSGDConfig()
+		for k, v := range params{
+			switch k{
+			case "dampening":
+				cfg.Dampening = v.(float64)
+			case "momentum":
+				cfg.Momentum = v.(float64)
+			case "wd":
+				cfg.Wd = v.(float64)
+			case "nesterov":
+				cfg.Nesterov = v.(bool)
+			}
+		}
+		opt, err := cfg.Build(vs, lr)
 		if err != nil {
 			err = fmt.Errorf("Build SGD optimizer failed: %w", err)
 			return nil, err
 		}
+		return opt, nil
+
 	default:
 		err = fmt.Errorf("Unsupported optimizer config %q\n", name)
 		return nil, err
@@ -187,31 +235,74 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 	// TODO.
 	name := b.Config.Scheduler.Name
+	params := b.Config.Scheduler.Params
 	var s *nn.LRScheduler
 	var update string
 	switch name {
 	case "OneCycleLR":
-		maxLR := b.Config.Scheduler.Params.MaxLR
-		finalLR := b.Config.Scheduler.Params.FinalLR
-		pctStart := b.Config.Scheduler.Params.PctStart
-		epochs := b.Config.Train.Params.Epochs
+		var opts []nn.OneCycleOption
+		var maxLR float64
+		for k, v := range params{
+			switch k{
+			case "max_lr":
+				maxLR = v.(float64)
+			case "final_lr":
+				finalLR := v.(float64)
+				o := nn.WithOneCycleFinalDivFactor(finalLR)
+				opts = append(opts, o)
+
+			case "pct_start":
+				pctStart := v.(float64)
+				o := nn.WithOneCyclePctStart(pctStart)
+				opts = append(opts, o)
+			case "epochs":
+				epochs := v.(int)
+				o := nn.WithOneCycleLastEpoch(epochs)
+				opts = append(opts, o)
+			}
+		}
 		stepPerEpoch := int(b.Config.Train.BatchSize)
-		s = nn.NewOneCycleLR(opt, maxLR, nn.WithOneCycleFinalDivFactor(finalLR), nn.WithOneCyclePctStart(pctStart), nn.WithOneCycleEpochs(epochs), nn.WithOneCycleStepsPerEpoch(stepPerEpoch)).Build()
+		o := nn.WithOneCycleStepsPerEpoch(stepPerEpoch)
+		opts = append(opts, o)
+		s = nn.NewOneCycleLR(opt, maxLR, opts...).Build()
 		update = "on_batch"
 	case "CosineAnnealingWarmRestarts":
 		t0 := 10
 		tMult := 1
 		etaMin := 0.001
+		for k, v := range params{
+			switch k{
+			case "t0":
+				t0 = v.(int)
+			case "t_mult":
+				tMult = v.(int)
+			case "eta_min":
+				etaMin = v.(float64)
+			}
+		}
 		s = nn.NewCosineAnnealingWarmRestarts(opt, t0, nn.WithTMult(tMult), nn.WithEtaMin(etaMin)).Build()
 		update = "on_batch"
 	case "StepLR": // reduce LR by 0.1 every 10 epochs
 		stepSize := 10
 		gamma := 0.1
+		for k, v := range params{
+			switch k{
+			case "step_size":
+				stepSize = v.(int)
+			}
+		}
 		s = nn.NewStepLR(opt, stepSize, gamma).Build()
 		update = "on_epoch"
 	case "LambdaLR":
+		denominator := 30
+		for k, v := range params{
+			switch k{
+			case "denominator":
+				denominator = v.(int)
+			}
+		}
 		ld1 := func(epoch interface{}) float64 {
-			return float64(epoch.(int) / 30)
+			return float64(epoch.(int) / denominator)
 		}
 		s = nn.NewLambdaLR(opt, []nn.LambdaFn{ld1}).Build()
 		update = "on_epoch"
@@ -224,15 +315,39 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 		update = "on_epoch"
 	case "ExponentialLR":
 		gamma := 0.1
+		for k, v := range params{
+			switch k{
+			case "gamma":
+				gamma = v.(float64)
+			}
+		}
 		s = nn.NewExponentialLR(opt, gamma).Build()
 		update = "on_epoch"
 	case "CosineAnnealingLR":
-		steps := 10
-		s = nn.NewCosineAnnealingLR(opt, steps, 0.0).Build()
+		tmax := 10
+		etaMin := 0.0
+		for k, v := range params{
+			switch k{
+			case "tmax":
+				tmax = v.(int)
+			case "eta_min":
+				etaMin = v.(float64)
+			}
+		}
+		s = nn.NewCosineAnnealingLR(opt, tmax, etaMin).Build()
 		update = "on_batch"
 	case "CyclicLR":
 		baseLRs := []float64{0.001}
 		maxLRs := []float64{0.1}
+
+		for k, v := range params{
+			switch k{
+			case "base_lr":
+				baseLRs = sliceInterface2Float64(v.([]interface{}))
+			case "max_lr":
+				maxLRs = sliceInterface2Float64(v.([]interface{}))
+			}
+		}
 		s = nn.NewCyclicLR(opt, baseLRs, maxLRs, nn.WithCyclicStepSizeUp(5), nn.WithCyclicMode("triangular")).Build()
 		update = "on_epoch"
 	case "ReduceLROnPlateau":
@@ -247,3 +362,20 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 
 	return scheduler, nil
 }
+
+
+func (b *Builder) BuildTransformer(mode string) (aug.Transformer, error) {
+	switch mode{
+	case "train":
+		config := b.Config.Transform.Train
+		return makeTransformer(config)
+
+	case "valid":
+		config := b.Config.Transform.Train
+		return makeTransformer(config)
+	default:
+		err := fmt.Errorf("BuildTrainformer failed. Invalid mode. Mode should be either 'train' or 'valid'. Got %q\n", mode)
+		return nil, err
+	}
+}
+

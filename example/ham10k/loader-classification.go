@@ -98,21 +98,37 @@ func NewSkinDataset(data []SkinDz, cfg *lab.Config, isTrain bool) (dutil.Dataset
 			}
 
 		case "CustomAugment":
-			// transformer, err = CustomAugment()
-			transformer, err = HamAugment()
+			transformer, err = CustomAugment()
+			if err != nil {
+				return nil, err
+			}
+		case "ResNetAugment":
+			transformer, err = ResNetAugment()
 			if err != nil {
 				return nil, err
 			}
 
-			// TODO: continue
+		case "NoAugment":
+			return nil, nil
+
 		default:
 			fmt.Printf("No transform method found...\n")
 		}
-	} else { // valid set, just normalize
-		// transformer, err = ValidAugment()
-		// if err != nil {
-			// return nil, err
-		// }
+	} else { 
+		switch cfg.Transform.Augment{
+			case "NormAugment":
+				transformer, err = NormAugment()
+				if err != nil {
+					return nil, err
+				}
+			case "NoAugment":
+				transformer, err = NoAugment()
+				if err != nil {
+					return nil, err
+				}
+			default:
+				fmt.Printf("No transform method found...\n")
+		}
 	}
 
 	return &SkinDataset{

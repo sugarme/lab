@@ -10,7 +10,7 @@ func CustomAugment() (aug.Transformer, error) {
 	return aug.Compose(normOpt)
 }
 
-func HamAugment()(aug.Transformer, error){
+func ResNetAugment()(aug.Transformer, error){
 	hFlipOpt := aug.WithRandomHFlip(0.5)
 	vFlipOpt := aug.WithRandomVFlip(0.5)
 	rotateOpt := aug.WithRandRotate(0, 90)
@@ -20,8 +20,12 @@ func HamAugment()(aug.Transformer, error){
 	return aug.Compose(hFlipOpt, vFlipOpt, rotateOpt)
 }
 
-func ValidAugment() (aug.Transformer, error) {
+func NormAugment() (aug.Transformer, error) {
 	normOpt := aug.WithNormalize(aug.WithNormalizeMean([]float64{0.485, 0.456, 0.406}), aug.WithNormalizeStd([]float64{0.229, 0.224, 0.225}))
 
 	return aug.Compose(normOpt)
+}
+
+func NoAugment() (aug.Transformer, error) {
+	return nil, nil
 }
