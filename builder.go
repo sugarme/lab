@@ -43,7 +43,7 @@ func (b *Builder) BuildDataLoader(data dutil.Dataset, mode string) (*dutil.DataL
 	n := data.Len()
 	sampler, err := dutil.NewBatchSampler(n, int(batchSize), true, shuffle)
 	if err != nil {
-		err := fmt.Errorf("BuildTrainLoader failed: %w\n", err)
+		err := fmt.Errorf("BuildDataLoader failed: %w\n", err)
 		return nil, err
 	}
 
@@ -147,7 +147,6 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 	name := b.Config.Optimizer.Name
 
 	var (
-		opt *nn.Optimizer
 		err error
 	)
 
@@ -160,6 +159,7 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 		switch k{
 		case "lr":
 			lr = v.(float64)
+			break
 		}
 	}
 
@@ -227,8 +227,6 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 		err = fmt.Errorf("Unsupported optimizer config %q\n", name)
 		return nil, err
 	}
-
-	return opt, nil
 }
 
 // BuildScheduler builds optimizer scheduler.
@@ -368,11 +366,11 @@ func (b *Builder) BuildTransformer(mode string) (aug.Transformer, error) {
 	switch mode{
 	case "train":
 		config := b.Config.Transform.Train
-		return makeTransformer(config)
+		return MakeTransformer(config)
 
 	case "valid":
 		config := b.Config.Transform.Train
-		return makeTransformer(config)
+		return MakeTransformer(config)
 	default:
 		err := fmt.Errorf("BuildTrainformer failed. Invalid mode. Mode should be either 'train' or 'valid'. Got %q\n", mode)
 		return nil, err

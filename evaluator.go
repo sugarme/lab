@@ -67,8 +67,9 @@ func WithEvalEarlyStopping(v int) EvalOption{
 }
 
 func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map[string]float64, float64, float64){
-	e.Epoch = epoch	
 
+
+	e.Epoch = epoch	
 	metrics := make(map[string][]float64, 0)
 	validMetrics := make([]float64, 0)
 	losses := make([]float64, 0)
@@ -81,6 +82,7 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 			err = fmt.Errorf("Predictor - Fetch data failed: %w\n", err)
 			log.Fatal(err)
 		}
+
 
 		device := gotch.CPU
 		if e.CUDA{
@@ -95,6 +97,7 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 			labels []ts.Tensor
 		)
 		batchSize := len(dataItem.([][]ts.Tensor))	
+
 		for i := 0; i < batchSize; i++ {
 			batch = append(batch, dataItem.([][]ts.Tensor)[i][0])
 			labels = append(labels, dataItem.([][]ts.Tensor)[i][1])
@@ -106,10 +109,15 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 			labels[i].MustDrop()
 		}
 
+
 		input := batchTs.MustDetach(true).MustTo(device, true)
 		target := labelTs.MustDetach(true).MustTo(device, true)
 
-		logits := model.ForwardT(input, false).MustDetach(true)
+
+		var logits *ts.Tensor
+		// ts.NoGrad(func(){
+			logits = model.ForwardT(input, false).MustDetach(true)
+		// })
 
 		// loss
 		loss := criterion(logits, target)

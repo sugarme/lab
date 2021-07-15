@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/sugarme/lab"
@@ -27,7 +26,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&config, "config", "baseline.yaml", "Specify config file.")
+	flag.StringVar(&config, "config", "config-baseline.yaml", "Specify config file.")
 	flag.StringVar(&task, "task", "", "Specify a task to run.")
 	flag.IntVar(&fold, "fold", 0, "Specify a fold to run on.")
 	flag.StringVar(&checkpoint, "checkpoint", "", "Specify a checkpoint file.")
@@ -62,8 +61,6 @@ func main() {
 	if fold > 0 {
 		switch task {
 		case "train":
-			cfg.Dataset.OuterOnly = true
-			cfg.Dataset.OuterFold = fold
 			cfg.Evaluation.Params.SaveCheckpointDir = fmt.Sprintf("%s/fold%d", cfg.Evaluation.Params.SaveCheckpointDir, fold)
 			seedStr := fmt.Sprintf("%v%v", cfg.Seed, fold)
 			seed, err := strconv.Atoi(seedStr)
@@ -74,11 +71,7 @@ func main() {
 			cfg.Seed = int64(seed)
 
 		case "test":
-			cfg.Dataset.OuterOnly = true
-			cfg.Dataset.OuterFold = fold
-			fp := filepath.Dir(cfg.Test.SaveFile)
-			fn := filepath.Base(cfg.Test.SaveFile)
-			cfg.Test.SaveFile = fmt.Sprintf("%s/fold%d/%s", fp, fold, fn)
+			// TODO.
 		}
 	}
 
@@ -88,10 +81,6 @@ func main() {
 
 	if loadPrevious != "" {
 		cfg.Train.LoadPrevious = loadPrevious
-	}
-
-	if eps > 0 {
-		cfg.Optimizer.Params.Eps = eps
 	}
 
 	cfg.SetInferenceBatchSize()
@@ -135,11 +124,17 @@ func main() {
 		}
 
 	case "train-classification":
-		ds, folds, err := preprocess(cfg)
+		// ds, folds, err := preprocess(cfg)
+		// if err != nil{
+			// log.Fatal(err)
+		// }
+		trainClassification(cfg)
+
+	case "split-data":
+		_, _, err := makeTrainValid(cfg.Dataset.CSVFilename, cfg.Dataset.DataDir[0])
 		if err != nil{
 			log.Fatal(err)
 		}
-		trainClassification(cfg, ds, folds)
 
 	default:
 		log.Fatalf("Unsupported task: %s\n", task)

@@ -316,28 +316,28 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 			logits.MustDrop()
 			loss.MustDrop()
 
-			/*
 
 			// TODO. delete this. Just for test validating
-			if t.Steps%100 == 0 && t.Steps > 0{
+			/*
+			if t.Steps%10 == 0 && t.Steps > 0{
 				// Validation
 				if (t.CurrentEpoch+1)%t.ValidateInterval == 0 {
 					t.Logger.Println("VALIDATING...")
 					validStartTime := time.Now()
-					// t.Model.Eval()
-					validMetric, err := t.Evaluator.Validate(t.Model, t.Criterion, t.CurrentEpoch)
+					t.Model.Eval()
+					validMetric, validLoss, err := t.Evaluator.Validate(t.Model, t.Criterion, t.CurrentEpoch)
 					if err != nil{
 						err = fmt.Errorf("Evaluator - Validate failed: %w\n", err)
 						log.Fatal(err)
 					}
+					t.Model.Train()
+					t.LossTracker.SetValidLoss(validLoss, t.Steps, t.CurrentEpoch)
 					if t.Scheduler.Update == "on_valid"  && t.Scheduler.LRScheduler != nil {
 						t.Scheduler.Step(nn.WithLoss(validMetric))
 					}
-					// t.Model.Train()
 					t.Logger.Printf("Validation took %0.2f mins\n", time.Since(validStartTime).Minutes())
 				}
 			}
-
 			*/
 
 			t.Steps += 1
@@ -359,17 +359,17 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 		if (t.CurrentEpoch+1)%t.ValidateInterval == 0 {
 			t.Logger.Println("VALIDATING...")
 			validStartTime := time.Now()
-			// t.Model.Eval()
+			t.Model.Eval()
 			validMetric, validLoss, err := t.Evaluator.Validate(t.Model, t.Criterion, t.CurrentEpoch)
 			if err != nil{
 				err = fmt.Errorf("Evaluator - Validate failed: %w\n", err)
 				log.Fatal(err)
 			}
+			t.Model.Train()
 			t.LossTracker.SetValidLoss(validLoss, t.Steps, t.CurrentEpoch)
 			if t.Scheduler.Update == "on_valid"  && t.Scheduler.LRScheduler != nil {
 				t.Scheduler.Step(nn.WithLoss(validMetric))
 			}
-			// t.Model.Train()
 			t.Logger.Printf("Validation took %0.2f mins\n", time.Since(validStartTime).Minutes())
 		}
 

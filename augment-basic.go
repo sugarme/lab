@@ -8,7 +8,7 @@ import (
 )
 
 
-func makeTransformer(cfg TransformConfig) (aug.Transformer, error){
+func MakeTransformer(cfg TransformConfig) (aug.Transformer, error){
 	var augments []aug.Option 
 	if cfg.IsTransformer{
 		switch cfg.TransformerName{
@@ -123,19 +123,22 @@ func makeTransformer(cfg TransformConfig) (aug.Transformer, error){
 			a := aug.WithRandomAffine(opts...)
 			augments = append(augments, a)
 
+		// NOTE. skip this because resize is handled at DataLoader
 		case "Resize":
+			/*
 			var h, w int64
 			for k, v := range augOpt.Params{
 				switch k{
-				case "h":
+				case "height":
 					h = v.(int64)
-				case "w":
+				case "width":
 					w = v.(int64)
 				}
 			}
 
 			a := aug.WithResize(h, w)
 			augments = append(augments, a)
+			*/
 
 		case "ZoomOut":
 			var val float64 = 0.1 // default value
@@ -313,7 +316,7 @@ func makeTransformer(cfg TransformConfig) (aug.Transformer, error){
 			augments = append(augments, a)
 
 		default:
-			err := fmt.Errorf("Unsupport augment option: %q\n", augOpt.Name)
+			err := fmt.Errorf("MakeTransformer failed: Unsupport augment option: %q\n", augOpt.Name)
 			log.Fatal(err)
 		}
 	}

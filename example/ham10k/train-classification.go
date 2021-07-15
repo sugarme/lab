@@ -5,17 +5,23 @@ import (
 	"log"
 	"time"
 
-	"github.com/sugarme/gotch/dutil"
 	"github.com/sugarme/lab"
 )
 
-func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
+// func trainClassification(cfg *lab.Config, data []SkinDz, folds []dutil.Fold) {
+func trainClassification(cfg *lab.Config) {
 	fmt.Printf("Start training...\n")
 
 	// // Fold 1
 	// trainSet := getSet(folds[0].Train, data)
 	// validSet := getSet(folds[0].Test, data)
-	trainSet, validSet, err := makeClassificationDatasets(cfg)
+	// trainSet, validSet, err := makeClassificationDatasets(cfg)
+	csvFile := cfg.Dataset.CSVFilename
+	dataDir := cfg.Dataset.DataDir[0]
+	trainSet, validSet, err := makeTrainValid(csvFile, dataDir)
+	if err != nil{
+		log.Fatal(err)
+	}
 
 	trainData, err := NewSkinDataset(trainSet, cfg, true)
 	if err != nil{

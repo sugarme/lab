@@ -1,33 +1,33 @@
 seed: 42
 
+# slack_url: "https://hooks.slack.com/services/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"
+
 dataset:
   name: MelDataset
   params:
-    flip: true
-    verbose: true
-    square: true
-    square_tta: 1
-  inner_fold: 0
-  outer_fold: 0
-  outer_only: true
+    resize: [224, 224]
   data_dir: ["data/200"]
   csv_filename: data/ham10k.csv 
 
-
 transform:
-  augment: NONE
-  params:
-    n: 3
-    m: 12.0
-  num_workers: 0
-  pad_ratio: null
-  # resize_to: [224, 224]
-  preprocess:
-    image_range: [0, 255]
-    input_range: [0, 1]
-    mean: [0.485, 0.456, 0.406]
-    sdev: [0.229, 0.224, 0.225]
-
+  train:
+    is_transformer: false
+    transformer_name: NONE
+    augment_opts:
+    - name: "RandomHFlip"
+      params:
+        pvalue: 0.2
+    - name: "Normalize"
+      params:
+        mean: [0.485, 0.456, 0.406]
+        stdev: [0.229, 0.224, 0.225]
+  valid:
+    is_transformer: false
+    augment_opts:
+    - name: "Normalize"
+      params:
+        mean: [0.485, 0.456, 0.406]
+        stdev: [0.229, 0.224, 0.225]
 
 model:
   name: UNet
@@ -38,7 +38,6 @@ model:
     num_classes: 23
     dropout: 0.2
     multisample_dropout: true
-
 
 find_lr: # this is its own mode 
   params:
@@ -67,26 +66,20 @@ evaluation:
     save_checkpoint_dir: checkpoint/baseline
     save_best: true
     prefix: effnet
-    # metrics: [dice_coeff_batch]
     metrics: [dice_coefficient, jaccard_index]
     valid_metric: dice_coefficient
     mode: max
     improve_thresh: 1.0e-6
 
 loss:
-  # name: BCELoss
   name: DiceLoss
-  # name: JaccardLoss
   params:
-
 
 optimizer:
   name: AdamW
-  # name: SGD
   params:
     lr: 3.0e-4
-    weight_decay: 5.0e-4
-
+    wd: 5.0e-4
 
 scheduler:
   # name: CosineAnnealingWarmRestarts
@@ -96,6 +89,4 @@ scheduler:
   name: CustomLR
   params:
     final_lr: 1.0e-8
-    num_snapshots: 5
-
 

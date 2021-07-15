@@ -97,7 +97,7 @@ func makeDatasets(dataDir string) ([]Sample, []Sample, error){
 
 type HamDataset struct {
 	Samples []Sample
-	Config lab.Transform
+	Config lab.TransformConfig
 	Transformer aug.Transformer
 	IsTrain bool
 }
@@ -110,7 +110,24 @@ func (m *HamDataset) Item(idx int) (interface{}, error) {
 		err error
 	) 
 	
-	resize := m.Config.ResizeTo
+	var resize []int64
+	for _ , augOpt := range m.Config.AugmentOpts{
+		name := augOpt.Name
+		params := augOpt.Params
+		if name == "resize"{
+			for k, v := range params{
+				switch k{
+				case "height":
+					h := int64(v.(int))
+					resize = append(resize, h)
+				case "width":
+					w := int64(v.(int))
+					resize = append(resize, w)
+				}
+			}
+			break
+		}
+	}
 	switch len(resize){
 	case 2:
 		imgTs, err = vision.LoadAndResize(sample.Input, resize[0], resize[1])
@@ -184,25 +201,21 @@ func (m *HamDataset) DType() reflect.Type {
 }
 
 func NewHamDataset(data []Sample, cfg *lab.Config, isTrain bool) (dutil.Dataset, error){
-	var transformer aug.Transformer
-	var err error
+	var(
+		transformer aug.Transformer
+		err error
+		config lab.TransformConfig = cfg.Transform.Train
+	)
 	if isTrain{
-		switch cfg.Transform.Augment{
-		case "RandAugment":
-			transformer, err = lab.NewRandomAugment(lab.WithRandomAugmentNval(cfg.Transform.Params.N), lab.WithRandomAugmentMval(cfg.Transform.Params.M))
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO: continue
-		default:
-			fmt.Printf("No transform method found...\n")
+		transformer, err = lab.MakeTransformer(config)
+		if err != nil{
+			return nil, err
 		}
 	}
 
 	return &HamDataset{
 		Samples: data,
-		Config: cfg.Transform,
+		Config: config,
 		Transformer: transformer,
 		IsTrain: isTrain,
 	}, nil

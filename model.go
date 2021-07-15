@@ -47,10 +47,10 @@ type Model struct {
 
 // Eval set model to evaluation mode
 func (m *Model) Eval() {
-	ts.MustGradSetEnabled(false)
+	m.Weights.Freeze()
 }
 
 // Train set model to training mode
 func (m *Model) Train() {
-	ts.MustGradSetEnabled(true)
+	m.Weights.Unfreeze()
 }

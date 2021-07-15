@@ -19,7 +19,7 @@ type SkinSample struct {
 
 type SkinDataset struct {
 	Samples []SkinSample
-	Config lab.Transform
+	Config lab.TransformConfig
 	Transformer aug.Transformer
 	IsTrain bool
 }
@@ -30,8 +30,26 @@ func (m *SkinDataset) Item(idx int) (interface{}, error) {
 		imgTs *ts.Tensor
 		err error
 	) 
+
+	var resize []int64
+	for _ , augOpt := range m.Config.AugmentOpts{
+		name := augOpt.Name
+		params := augOpt.Params
+		if name == "Resize"{
+			for k, v := range params{
+				switch k{
+				case "height":
+					h := int64(v.(int))
+					resize = append(resize, h)
+				case "width":
+					w := int64(v.(int))
+					resize = append(resize, w)
+				}
+			}
+			break
+		}
+	}
 	
-	resize := m.Config.ResizeTo
 	switch len(resize){
 	case 2:
 		imgTs, err = vision.LoadAndResize(sample.Filename, resize[0], resize[1])
@@ -87,53 +105,26 @@ func NewSkinDataset(data []SkinDz, cfg *lab.Config, isTrain bool) (dutil.Dataset
 		samples = append(samples, SkinSample{filename, int64(label)})
 	}
 
-	var transformer aug.Transformer
-	var err error
-	if isTrain{
-		switch cfg.Transform.Augment{
-		case "RandAugment":
-			transformer, err = lab.NewRandomAugment(lab.WithRandomAugmentNval(cfg.Transform.Params.N), lab.WithRandomAugmentMval(cfg.Transform.Params.M))
-			if err != nil {
-				return nil, err
-			}
+	var(
+		err error
+		transformer aug.Transformer
+		config lab.TransformConfig
+	)
+	switch isTrain{
+	case true:
+		config = cfg.Transform.Train
+	case false:
+		config = cfg.Transform.Valid
+	}
 
-		case "CustomAugment":
-			transformer, err = CustomAugment()
-			if err != nil {
-				return nil, err
-			}
-		case "ResNetAugment":
-			transformer, err = ResNetAugment()
-			if err != nil {
-				return nil, err
-			}
-
-		case "NoAugment":
-			return nil, nil
-
-		default:
-			fmt.Printf("No transform method found...\n")
-		}
-	} else { 
-		switch cfg.Transform.Augment{
-			case "NormAugment":
-				transformer, err = NormAugment()
-				if err != nil {
-					return nil, err
-				}
-			case "NoAugment":
-				transformer, err = NoAugment()
-				if err != nil {
-					return nil, err
-				}
-			default:
-				fmt.Printf("No transform method found...\n")
-		}
+	transformer, err = lab.MakeTransformer(config)
+	if err != nil{
+		return nil, err
 	}
 
 	return &SkinDataset{
 		Samples: samples,
-		Config: cfg.Transform,
+		Config: config,
 		Transformer: transformer,
 		IsTrain: isTrain,
 	}, nil

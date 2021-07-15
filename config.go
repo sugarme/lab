@@ -12,13 +12,7 @@ import (
 // ===============
 type DatasetConfig struct {
 		Name   string `yaml:"name"`
-		Params struct {
-			Flip    bool `yaml:"flip"`
-			Verbose bool `yaml:"verbose"`
-		} `yaml:"params"`
-		InnerFold   int      `yaml:"inner_fold"`
-		OuterFold   int      `yaml:"outer_fold"`
-		OuterOnly   bool     `yaml:"outer_only"`
+		Params map[string]interface{} `yaml:"params"`
 		DataDir     []string `yaml:"data_dir"`
 		CSVFilename string   `yaml:"csv_filename"`
 }
@@ -34,7 +28,6 @@ type TransformConfig struct{
 	IsTransformer bool `yaml:"is_transformer"`
 	TransformerName string `yaml:"transformer_name"`
 	Transformer aug.Transformer `yaml:"transformer"`
-
 	AugmentOpts []AugmentOpt `yaml:"augment_opts"` // Augment options to compose a transformer
 }
 
@@ -57,7 +50,6 @@ type ModelConfig struct {
 // ============
 type TrainConfig struct {
 	BatchSize    int64  `yaml:"batch_size"`
-	Trainer      string `yaml:"trainer"`       // Trainer name
 	LoadPrevious string `yaml:"load_previous"` // filepath to load pretrained weights
 	Params       struct {
 		GradientAcc      float64 `yaml:"gradient_accumulation"`
