@@ -65,6 +65,7 @@ func findLR(cfg *lab.Config) error{
 	endLR := cfg.FindLR.EndLR
 	steps := cfg.FindLR.NumIter
 	saveFig := cfg.FindLR.SaveFig
+	checkpointDir = cfg.Evaluation.Params.SaveCheckpointDir
 
 	finder := lab.NewLRFinder(model, trainLoader, opt, criterion, checkpointDir)
 	return finder.FindLR(startLR, endLR, steps, saveFig)

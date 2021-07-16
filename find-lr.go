@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 
 	"github.com/sugarme/gotch"
 	"github.com/sugarme/gotch/dutil"
@@ -53,6 +54,7 @@ func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, crit
 		cuda = cudaOpt[0]
 	}
 	return &LRFinder{
+		Loader: loader,
 		Model: model,
 		Optimizer: opt,
 		Scheduler: nil, // Will build it when calling FindLR()
@@ -120,7 +122,8 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 	}
 
 	// Make history capacity
-	fd.History = make([]history, totalSteps)
+	// fd.History = make([]history, totalSteps)
+	fd.History = make([]history, 0)
 
 	// Validate smooth factor
 	if options.SmoothFactor < 0 || options.SmoothFactor >= 1{
@@ -178,18 +181,22 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 		logits.MustDrop()
 		lossTs.MustDrop()
 
-		// Update learning rate
-		fd.Scheduler.Step()
-
 		// Track best loss and smooth it
 		loss := lossVals[0]
+		// Check if loss has diverged, stop
+		if loss  > options.DivergeThreshold *fd.BestLoss{
+			fmt.Printf("Stopping early at step %d/%d, the loss has diverged...\n", i, totalSteps)
+			break
+		}
+
 		lr := fd.Optimizer.GetLRs()[0]
 		if i == 0{
 			fd.BestLoss = loss
-			fd.History[0] = history{
+			h := history{
 				Loss: loss,
 				LR: lr,
 			}
+			fd.History = append(fd.History, h)
 		} else {
 			if options.SmoothFactor > 0{
 				loss = options.SmoothFactor * loss + (1 - options.SmoothFactor) * fd.History[i - 1].Loss
@@ -198,18 +205,21 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 				fd.BestLoss = loss
 			}
 
-			fd.History[i] = history{
+			h := history{
 				Loss: loss,
 				LR: lr,
 			}
+			fd.History = append(fd.History, h)
 		}
 
-		// Check if loss has diverged, stop
-		if loss  > options.DivergeThreshold *fd.BestLoss{
-			fmt.Printf("Stopping early, the loss has diverged...\n")
-			break
+		if i > 0 && i%10 ==0{
+			fmt.Printf("Completed %03d/%d steps\n", i, totalSteps)
 		}
-	}
+
+		// Update learning rate
+		fd.Scheduler.Step()
+
+	} // for-loop train
 
 	// Save data to CSV
 	csvFile, err := os.Create(fmt.Sprintf("%s/find-lr.csv", fd.CheckpointDir))
@@ -226,7 +236,7 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 	}
 
 	for i, hx := range fd.History{
-		line := fmt.Sprintf("%v,%v,%v", i, hx.Loss, hx.LR)
+		line := fmt.Sprintf("%v,%v,%v\n", i, hx.Loss, hx.LR)
 		_, err := csvFile.WriteString(line)
 		if err != nil{
 			err = fmt.Errorf("Write csv file at step %d failed: %w\n", i, err)
@@ -236,7 +246,8 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 
 	// Generate graph if set so.
 	if saveFig{
-		err = plotLossLR(fd.History, fd.CheckpointDir)
+		ticks := []float64{startLR, endLR}
+		err = plotLossLR(fd.History, fd.CheckpointDir, ticks...)
 		if err != nil{
 			return err
 		}
@@ -245,12 +256,22 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 	return nil
 }
 
-func plotLossLR(data []history, dir string) error{
+func plotLossLR(data []history, dir string, tickOpts ...float64) error{
 	p := plot.New()
 
 	p.Title.Text = "Loss vs. Learning Rate"
-	p.X.Label.Text = "Steps"
-	p.Y.Label.Text = "Loss/LR"
+	p.X.Label.Text = "LR"
+	p.Y.Label.Text = "Loss"
+	p.Legend.Top = true
+	
+	if len(tickOpts) == 2{
+		min := tickOpts[0]
+		max := tickOpts[1]
+		p.X.Tick.Marker = LRTicks{}
+		p.X.Tick.Marker.Ticks(min, max)
+	}
+
+	p.X.Tick.Label.Rotation = 45
 
 	points :=  make(plotter.XYs, len(data))
 	for i, hx := range data{
@@ -276,3 +297,18 @@ func plotLossLR(data []history, dir string) error{
 	return nil
 }
 
+type LRTicks struct{}
+
+// Ticks returns Ticks in the specified range.
+func (LRTicks) Ticks(min, max float64) []plot.Tick {
+	if max <= min {
+		panic("illegal range")
+	}
+	var ticks []plot.Tick
+
+	// label every 10 unit
+	for i := min; i <= max; i *=10 {
+		ticks = append(ticks, plot.Tick{Value: i, Label: strconv.FormatFloat(i, 'e', 0, 64)})
+	}
+	return ticks
+}

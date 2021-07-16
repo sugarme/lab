@@ -66,7 +66,7 @@ type TrainConfig struct {
 type FindLRConfig struct{
 		StartLR float64 `yaml:"start_lr"`
 		EndLR   float64 `yaml:"end_lr"`
-		NumIter int     `yaml:"num_inter"`
+		NumIter int     `yaml:"num_iter"`
 		SaveFig bool    `yaml:"save_fig"`
 }
 

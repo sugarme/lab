@@ -80,13 +80,13 @@ type ExponentialLR struct {
 }
 
 // NewLinearLR creates a new LinearLR.
-func NewExponentialLR(opt *nn.Optimizer, totalSteps int, endLROpt ...float64) *LinearLR {
+func NewExponentialLR(opt *nn.Optimizer, totalSteps int, endLROpt ...float64) *ExponentialLR {
 	endLR := 10.0
 	if len(endLROpt) > 0{
 		endLR = endLROpt[0]
 	}
 	initialLRs := opt.GetLRs()
-	return &LinearLR{
+	return &ExponentialLR{
 		opt:        opt,
 		initialLRs: initialLRs,
 		stepCount:  0,
@@ -124,7 +124,7 @@ func (e *ExponentialLR) SetLRs(opts ...nn.SchedulerOption) {
 		currentStep := e.lastEpoch + 1
 		r := float64(currentStep) / float64(e.totalSteps)
 		for i, baseLR := range e.initialLRs {
-			newLR := baseLR + math.Pow(e.endLR - baseLR, r)
+			newLR := baseLR * math.Pow(e.endLR/baseLR, r)
 			newLRs[i] = newLR
 		}
 	}
