@@ -136,6 +136,12 @@ func main() {
 			log.Fatal(err)
 		}
 
+	case "find-lr":
+		err := findLR(cfg)
+		if err != nil{
+			log.Fatal(err)
+		}
+
 	default:
 		log.Fatalf("Unsupported task: %s\n", task)
 	}

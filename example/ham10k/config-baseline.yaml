@@ -39,13 +39,11 @@ model:
     dropout: 0.2
     multisample_dropout: true
 
-find_lr: # this is its own mode 
-  params:
-    start_lr: 1.0e-7
-    end_lr: 1
-    num_iter: 500
-    save_fig: true
-
+find_lr:
+  start_lr: 1.0e-7
+  end_lr: 1
+  num_iter: 500
+  save_fig: true
 
 train:
   batch_size: 16
@@ -57,7 +55,6 @@ train:
     validate_interval: 5
     verbosity: 1
     amp: false
-
 
 evaluation:
   batch_size: 1
@@ -76,10 +73,9 @@ loss:
   params:
 
 optimizer:
-  name: AdamW
+  name: Adam
   params:
-    lr: 3.0e-4
-    wd: 5.0e-4
+    lr: 1.0e-4
 
 scheduler:
   # name: CosineAnnealingWarmRestarts

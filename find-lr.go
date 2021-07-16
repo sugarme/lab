@@ -47,7 +47,7 @@ type LRFinder struct {
 }
 
 // NewLRFinder creates a new LRFinder.
-func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, scheduler *Scheduler, criterion LossFunc, checkpointDir string, cudaOpt ...bool) *LRFinder{
+func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, criterion LossFunc, checkpointDir string, cudaOpt ...bool) *LRFinder{
 	cuda := true
 	if len(cudaOpt) > 0{
 		cuda = cudaOpt[0]
@@ -55,7 +55,7 @@ func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, sche
 	return &LRFinder{
 		Model: model,
 		Optimizer: opt,
-		Scheduler: scheduler,
+		Scheduler: nil, // Will build it when calling FindLR()
 		Criterion: criterion,
 		BestLoss: math.Inf(1),
 		CheckpointDir: checkpointDir,
@@ -99,20 +99,21 @@ func WithLRFinderOptionDivergeThreshold(v float64) LRFinderOption{
 }
 
 // FindLR train data over specified start and end LR for steps then save data to CSV and (optional) plot graph of LR vs Loss.
-func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, plotting bool, opts ...LRFinderOption) error{
+func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, opts ...LRFinderOption) error{
 	options := defaultLRFinderOptions()
 	// set start learning rate
 	fd.Optimizer.SetLRs([]float64{startLR})
 
-	// Initialize learning rate policy
+	// Build LRScheduler
 	switch options.StepMode{
 		case "exponential":
 			schedulerBuilder := NewExponentialLR(fd.Optimizer, totalSteps, endLR)
-			fd.Scheduler.LRScheduler = schedulerBuilder.Build()
+			scheduler := schedulerBuilder.Build()
+			fd.Scheduler = NewScheduler(scheduler, "ExponentialLR", "on_epoch")
 		case "linear":
 			schedulerBuilder := NewLinearLR(fd.Optimizer, totalSteps, endLR)
-			schedulerBuilder.SetLRs(nn.WithLastEpoch(totalSteps))
-			fd.Scheduler.LRScheduler = schedulerBuilder.Build()
+			scheduler := schedulerBuilder.Build()
+			fd.Scheduler = NewScheduler(scheduler, "LinearLR", "on_epoch")
 		default:
 			err := fmt.Errorf("Unsupported learning rate policy: %q\n", options.StepMode)
 			return err
@@ -234,7 +235,7 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, plotting bool,
 	}
 
 	// Generate graph if set so.
-	if plotting{
+	if saveFig{
 		err = plotLossLR(fd.History, fd.CheckpointDir)
 		if err != nil{
 			return err
