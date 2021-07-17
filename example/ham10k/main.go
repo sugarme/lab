@@ -23,6 +23,7 @@ var (
 	eps           float64 // epsilon for optimizer
 	checkpointDir string
 	fullDataset bool
+	graphDir string
 )
 
 func init() {
@@ -38,6 +39,7 @@ func init() {
 	flag.Float64Var(&eps, "eps", 0.0, "Specify epsilon value.")
 	flag.StringVar(&checkpointDir, "checkpoint_dir", "", "Specify checkpoint directory.")
 	flag.BoolVar(&fullDataset, "full", false, "Specify whether to use full dataset or not.")
+	flag.StringVar(&graphDir, "graph-dir", "", "Specify directory where graph data is.")
 }
 
 func main() {
@@ -138,6 +140,19 @@ func main() {
 
 	case "find-lr":
 		err := findLR(cfg)
+		if err != nil{
+			log.Fatal(err)
+		}
+
+	case "make-graph":
+		// err := makeLossGraphFromCSV(cfg.Evaluation.Params.SaveCheckpointDir)
+		err := makeLossGraphFromCSV(graphDir)
+		if err != nil{
+			log.Fatal(err)
+		}
+
+	case "make-lrgraph":
+		err := makeFindLRGraphFromCSV(graphDir)
 		if err != nil{
 			log.Fatal(err)
 		}

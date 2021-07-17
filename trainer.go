@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/sugarme/gotch/nn"
 	ts "github.com/sugarme/gotch/tensor"
 
+	"gonum.org/v1/gonum/stat"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
@@ -451,28 +453,35 @@ func (t *Trainer) PrintProgress() {
 }
 
 func (t *Trainer) makeLossGraph(){
+	// train points
+	tloss := lossByEpoch(t.LossTracker.Losses)
+	vloss := lossByEpoch(t.LossTracker.ValidLosses)
+
 	p := plot.New()
 
 	p.Title.Text = "Train/Valid Losses"
-	p.X.Label.Text = "Steps"
-	p.Y.Label.Text = "Loss"
+	p.X.Label.Text = "epoch"
+	p.Y.Label.Text = "loss"
+	p.Legend.Top = true
+	p.Legend.Padding = 5
+	p.X.Tick.Marker = EpochTicks{}
 
 	// train points
-	trainPoints :=  make(plotter.XYs, len(t.LossTracker.Losses))
-	validPoints := make(plotter.XYs, len(t.LossTracker.ValidLosses))
-	for i, step := range t.LossTracker.Losses{
-		trainPoints[i].X = float64(step.Step)
-		trainPoints[i].Y = step.Loss 
+	trainPoints :=  make(plotter.XYs, len(tloss))
+	validPoints := make(plotter.XYs, len(vloss))
+	for i := 0; i < len(tloss); i++{
+		trainPoints[i].X = float64(i)
+		trainPoints[i].Y = tloss[i]
 	}
 
-	for i, step := range t.LossTracker.ValidLosses{
-		validPoints[i].X = float64(step.Step)
-		validPoints[i].Y = step.Loss 
+	for i := 0; i < len(vloss); i++{
+		validPoints[i].X = float64(i)
+		validPoints[i].Y = vloss[i]
 	}
 
 	err := plotutil.AddLinePoints(p,
-		"Train", trainPoints,
-		"Valid", validPoints,
+		"train", trainPoints,
+		"valid", validPoints,
 	)
 	if err != nil {
 		err := fmt.Errorf("Making train loss plot failed: %w\n", err)
@@ -486,4 +495,47 @@ func (t *Trainer) makeLossGraph(){
 		log.Fatal(err)
 	}	
 }
+
+func lossByEpoch(data []LossItem) []float64{
+	currEpoch := 0
+	var epochLoss []float64
+	var losses []float64
+	for _, item := range data{
+		epoch := item.Epoch
+		loss := item.Loss
+		// New epoch
+		if epoch != currEpoch{
+			eloss := stat.Mean(epochLoss, nil)
+			losses = append(losses, eloss)
+			epochLoss = []float64{}
+			epochLoss = append(epochLoss, loss)
+			currEpoch = epoch
+		} else {
+			epochLoss = append(epochLoss, loss)
+		}
+	}
+
+	return losses
+}
+
+type EpochTicks struct{}
+
+// Ticks returns Ticks in the specified range.
+func (EpochTicks) Ticks(min, max float64) []plot.Tick {
+	if max <= min {
+		panic("illegal range")
+	}
+	var ticks []plot.Tick
+
+	// label every 10 unit
+	for i := min; i <= max; i++ {
+		if int(i)%5 == 0{
+			ticks = append(ticks, plot.Tick{Value: i, Label: strconv.FormatFloat(i, 'f', 0, 64)})
+		} else {
+			ticks = append(ticks, plot.Tick{Value: i, Label: ""})
+		}
+	}
+	return ticks
+}
+
 

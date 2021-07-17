@@ -69,7 +69,7 @@ evaluation:
   batch_size: 128
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/custom-3e-5
+    save_checkpoint_dir: checkpoint/custom-2e-5
     save_best: true
     prefix: resnet
     metrics: [skin_accuracy]
@@ -82,7 +82,7 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 3.0e-5
+    lr: 2.0e-5
 
 scheduler:
   name: None

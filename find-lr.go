@@ -14,6 +14,7 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
 )
 
 type history struct{
@@ -259,20 +260,16 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 func plotLossLR(data []history, dir string, tickOpts ...float64) error{
 	p := plot.New()
 
-	p.Title.Text = "Loss vs. Learning Rate"
-	p.X.Label.Text = "LR"
-	p.Y.Label.Text = "Loss"
+	p.Title.Text = "Learning Rate Finding"
+	p.X.Label.Text = "learning rate"
+	p.Y.Label.Text = "loss"
 	p.Legend.Top = true
-	
-	if len(tickOpts) == 2{
-		min := tickOpts[0]
-		max := tickOpts[1]
-		p.X.Tick.Marker = LRTicks{}
-		p.X.Tick.Marker.Ticks(min, max)
-	}
-
+	p.Legend.Padding = 5
+	p.X.Tick.Marker = LRTicks{}
 	p.X.Tick.Label.Rotation = 45
-
+	p.X.Tick.Label.YAlign = draw.YCenter
+	p.X.Tick.Label.XAlign = draw.XRight
+	
 	points :=  make(plotter.XYs, len(data))
 	for i, hx := range data{
 		points[i].Y = hx.Loss
@@ -280,7 +277,7 @@ func plotLossLR(data []history, dir string, tickOpts ...float64) error{
 	}
 
 	err := plotutil.AddLinePoints(p,
-		"Finding LR", points,
+		"loss vs lr", points,
 	)
 	if err != nil {
 		err := fmt.Errorf("Making loss-lr plot failed: %w\n", err)
@@ -307,8 +304,16 @@ func (LRTicks) Ticks(min, max float64) []plot.Tick {
 	var ticks []plot.Tick
 
 	// label every 10 unit
-	for i := min; i <= max; i *=10 {
-		ticks = append(ticks, plot.Tick{Value: i, Label: strconv.FormatFloat(i, 'e', 0, 64)})
+	count := 0
+	for i := min; i <= max; i += min  {
+		switch {
+			case count %100 == 0:
+				ticks = append(ticks, plot.Tick{Value: i, Label: strconv.FormatFloat(i, 'e', 0, 64)})
+			case count %10 == 0:
+				ticks = append(ticks, plot.Tick{Value: i, Label: ""})
+		}
+		count++
 	}
 	return ticks
 }
+
