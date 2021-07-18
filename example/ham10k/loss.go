@@ -11,7 +11,9 @@ type lossFnOptions struct{
 	Reduction int64 // 0: "None", 1: "mean", 2: "sum"
 	IgnoreIndex int64
 }
+
 type LossFnOption func(*lossFnOptions)
+
 func WithLossFnWeights(vals []float64) LossFnOption{
 	return func(o *lossFnOptions){
 		o.ClassWeights = vals

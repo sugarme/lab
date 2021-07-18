@@ -1,0 +1,90 @@
+seed: 42
+
+# slack_url: "https://hooks.slack.com/services/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"
+
+dataset:
+  name: SkinDataset
+  data_dir: ["data/images"]
+  csv_filename: data/HAM10000_metadata.csv
+
+transform:
+  train:
+    is_transformer: false
+    transformer_name: NONE
+    augment_opts:
+    - name: "Resize"
+      params:
+        height: 224
+        width: 224
+    - name: "RandomHFlip"
+      params:
+        pvalue: 0.5
+    - name: "RandomVFlip"
+      params:
+        pvalue: 0.5
+    - name: "RandomRotate"
+      params:
+        min: 0.0
+        max: 90.0
+    - name: "Normalize"
+      params:
+        mean: [0.485, 0.456, 0.406]
+        stdev: [0.229, 0.224, 0.225]
+  valid:
+    is_transformer: false
+    augment_opts:
+    - name: "Normalize"
+      params:
+        mean: [0.485, 0.456, 0.406]
+        stdev: [0.229, 0.224, 0.225]
+
+model:
+  name: ResNet
+  params:
+    backbone: resnet34
+    pretrained: true
+    pretrained_path: "pretrained"
+    num_classes: 7
+    dropout: 0.2
+    multisample_dropout: true
+
+find_lr:
+  start_lr: 1.0e-7
+  end_lr: 1
+  num_iter: 500
+  save_fig: true
+
+train:
+  batch_size: 128
+  trainer: Trainer
+  params:
+    gradient_accumulation: 1
+    num_epochs: 10
+    steps_per_epoch: 0
+    validate_interval: 1
+    verbosity: 100
+    amp: false
+
+evaluation:
+  batch_size: 128
+  evaluator: Evaluator
+  params:
+    save_checkpoint_dir: checkpoint/custom-4e-5
+    save_best: true
+    prefix: resnet
+    metrics: [skin_accuracy]
+    valid_metric: skin_accuracy
+
+loss:
+  name: CrossEntropyLoss
+  params:
+
+optimizer:
+  name: Adam
+  params:
+    lr: 4.0e-5
+
+scheduler:
+  name: None
+  params:
+

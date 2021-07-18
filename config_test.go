@@ -17,7 +17,7 @@ func TestTransformConfig(t *testing.T){
 
 	t.Logf("%+v\n", cfg)
 
-	tf, err := makeTransformer(cfg.Transform.Train)
+	tf, err := MakeTransformer(cfg.Transform.Train)
 
 	if err != nil{
 		t.Errorf("Make tranformer failed: %v\n", err)

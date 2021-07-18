@@ -268,6 +268,8 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 
 	// Start training
  	for epoch := 0; epoch < t.Epochs; epoch++{
+
+		var epochLosses []float64
 	 for t.Loader.HasNext(){
 			// Train one step
 			dataStart := time.Now()
@@ -311,6 +313,7 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 			lossVals := loss.Float64Values()
 			// NOTE. take first element. Loss tensor has always 1 value, hasn't it?
 			t.LossTracker.SetLoss(lossVals[0], t.Steps, t.CurrentEpoch)
+			epochLosses = append(epochLosses, lossVals[0])
 
 			// Delete intermediate tensors
 			input.MustDrop()
@@ -356,6 +359,10 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 			}
 
 		} // for loop step
+
+		// Log average epoch loss
+		epochLoss := stat.Mean(epochLosses, nil)
+		t.Logger.Printf("Epoch %2d/%d\t\tAvg. Loss %3.4f\n", t.CurrentEpoch + 1, t.Epochs,epochLoss)
 
 		// Validation
 		if (t.CurrentEpoch+1)%t.ValidateInterval == 0 {
@@ -442,9 +449,6 @@ func (t *Trainer) PrintProgress() {
 	// average loss for report period
 	avgLoss := loss/float64(t.Verbosity)
 	loadTime, stepTime := t.TimeTracker.GetTime("seconds")
-
-	// var lr float64 = 0.00003
-	// msg := fmt.Sprintf("Epoch %2d/%d\t\tStep %5d/%d(avg. data time: %0.4fs/step, step time: %0.4fs/step)\t\t Loss %0.4f (lr %.1e)\n", t.CurrentEpoch + 1, t.Epochs,t.Steps, t.TotalSteps, loadTime,stepTime, avgLoss, lr)
 	
 	var lr float64 = t.Optimizer.GetLRs()[0] // For now, assuming there ONE param group!
 	msg := fmt.Sprintf("Epoch %2d/%d\t\tStep %5d/%d(avg. data time: %0.4fs/step, step time: %0.4fs/step)\t\t Loss %0.4f (lr %.1e)\n", t.CurrentEpoch + 1, t.Epochs,t.Steps, t.TotalSteps, loadTime,stepTime, avgLoss, lr)

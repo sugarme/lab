@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
+	"gonum.org/v1/gonum/stat"
 
 	"github.com/sugarme/gotch"
 	"github.com/sugarme/gotch/dutil"
@@ -67,12 +68,12 @@ func WithEvalEarlyStopping(v int) EvalOption{
 }
 
 func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map[string]float64, float64, float64){
-
-
 	e.Epoch = epoch	
 	metrics := make(map[string][]float64, 0)
-	validMetrics := make([]float64, 0)
-	losses := make([]float64, 0)
+	var(
+		validMetrics []float64
+		losses []float64
+	)
 
 	count := 0
 	e.Loader.Reset()
@@ -113,7 +114,6 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 		input := batchTs.MustDetach(true).MustTo(device, true)
 		target := labelTs.MustDetach(true).MustTo(device, true)
 
-
 		var logits *ts.Tensor
 		// ts.NoGrad(func(){
 			logits = model.ForwardT(input, false).MustDetach(true)
@@ -141,10 +141,10 @@ func(e *Evaluator) evaluate(model ts.ModuleT, criterion LossFunc, epoch int)(map
 
 	avgMetrics := make(map[string]float64, 0)
 	for k, v := range metrics{
-		avgMetrics[k] = mean(v)
+		avgMetrics[k] = stat.Mean(v, nil)
 	}
-	avgValidMetric := mean(validMetrics)
-	loss := mean(losses)
+	avgValidMetric := stat.Mean(validMetrics, nil)
+	loss := stat.Mean(losses, nil)
 	avgMetrics["loss"] = loss
 
 	return avgMetrics, avgValidMetric, loss
@@ -178,10 +178,10 @@ type Evaluator struct {
 	SaveBest bool
 	MetricsFile string
 	// How many epochs of no improvement do we wait before stopping training?
-	EarlyStopping int
-	Stopping int
+	EarlyStopping int // Number of unimproved epochs to wait before stopping
+	Stopping int // accumulated epochs of no improvement.
 
-	Threshold float64
+	Threshold float64 // for comparing Ytrue to Ypred when calculating metrics.
 	History []map[string]float64
 
 	BestModel string
@@ -232,9 +232,10 @@ func(e *Evaluator) saveCheckpoint(weights *nn.VarStore, validMetric float64) err
 	saveFile = strings.ToUpper(saveFile)
 	saveFile = fmt.Sprintf("%s/%s", e.SaveCheckpointDir, saveFile)
 
-	switch e.SaveBest{
-	case true:
-		if e.checkImprovement(validMetric){
+	// If valid metric improved, save model weights.
+	if e.checkImprovement(validMetric){
+		switch e.SaveBest{
+		case true:
 			// delete previous saved best model
 			if e.BestModel != ""{
 				err := os.Remove(e.BestModel)
@@ -250,14 +251,18 @@ func(e *Evaluator) saveCheckpoint(weights *nn.VarStore, validMetric float64) err
 				err = fmt.Errorf("SaveCheckpoint - Save model failed: %w\n", err)
 				return err
 			}
+
+			// update best model
+			e.BestModel = saveFile
+
+		case false:
+				// save a new best model
+				err := weights.Save(saveFile)
+				if err != nil{
+					err = fmt.Errorf("SaveCheckpoint - Save model failed: %w\n", err)
+					return err
+				}
 		}
-	case false:
-			// save a new best model
-			err := weights.Save(saveFile)
-			if err != nil{
-				err = fmt.Errorf("SaveCheckpoint - Save model failed: %w\n", err)
-				return err
-			}
 	}
 
 	return nil
@@ -316,6 +321,8 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 	saveCheckpointDir := cfg.Evaluation.Params.SaveCheckpointDir
 	prefix := cfg.Evaluation.Params.Prefix
 	saveBest := cfg.Evaluation.Params.SaveBest
+	improveThresh := cfg.Evaluation.Params.ImproveThresh
+	mode := cfg.Evaluation.Params.Mode
 
 	metricsFile := fmt.Sprintf("%s/%s", saveCheckpointDir, "metrics.csv")
 
@@ -327,9 +334,10 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 		Epoch: 0,
 		Metrics: metrics,
 		ValidMetric: validMetric,
-		Mode: cfg.Evaluation.Params.Mode,
+		Mode: mode,
 		Prefix: prefix,
 		SaveCheckpointDir: saveCheckpointDir,
+		ImproveThresh: improveThresh,
 		SaveBest: saveBest,
 		MetricsFile: metricsFile,
 		EarlyStopping: options.EarlyStopping,
@@ -352,6 +360,8 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 	return eval, nil
 }
 
+
+/*
 func mean(vals []float64) float64{
 	n := len(vals)
 	var cum float64
@@ -370,4 +380,4 @@ func mean(vals []float64) float64{
 	res := cum/float64(n)
 	return res
 }
-
+*/

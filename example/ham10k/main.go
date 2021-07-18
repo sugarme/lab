@@ -24,6 +24,7 @@ var (
 	checkpointDir string
 	fullDataset bool
 	graphDir string
+	dataBalancing bool
 )
 
 func init() {
@@ -40,6 +41,7 @@ func init() {
 	flag.StringVar(&checkpointDir, "checkpoint_dir", "", "Specify checkpoint directory.")
 	flag.BoolVar(&fullDataset, "full", false, "Specify whether to use full dataset or not.")
 	flag.StringVar(&graphDir, "graph-dir", "", "Specify directory where graph data is.")
+	flag.BoolVar(&dataBalancing, "data-balancing", false, "Specify whether to balancing data or not.")
 }
 
 func main() {
@@ -133,7 +135,7 @@ func main() {
 		trainClassification(cfg)
 
 	case "split-data":
-		_, _, err := makeTrainValid(cfg.Dataset.CSVFilename, cfg.Dataset.DataDir[0])
+		_, _, err := makeTrainValid(cfg.Dataset.CSVFilename, cfg.Dataset.DataDir[0], true)
 		if err != nil{
 			log.Fatal(err)
 		}

@@ -7,13 +7,12 @@ import (
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
-	"github.com/sugarme/iseg/dutil"
 )
 
 // NOTE: in HAM10000 dataset, each lesion ("lesion_id") can have more than 1 images (image_id).
 // We will split data to train and valid sets. Valid set will contain only lesions with single image
 // to avoid leaking from train set.
-func makeTrainValid(csvFile, dataDir string) (trainSet, validSet []SkinDz, err error){
+func makeTrainValid(csvFile, dataDir string, balancing bool) (trainSet, validSet []SkinDz, err error){
 	// csvFile := "data/HAM10000_metadata.csv"
 	f, err := os.Open(csvFile)
 	if err != nil{
@@ -72,15 +71,49 @@ func makeTrainValid(csvFile, dataDir string) (trainSet, validSet []SkinDz, err e
 		Comparando: true,
 	})
 
+	fmt.Printf("Origin dataset: %d\n", originDF.Nrow())
+	fmt.Printf("unique dataset: %d\n", uniqueDF.Nrow())
+	dxCol := uniqueDF.Col("dx")
+	classes := make(map[string]int)
+	for i := 0; i < dxCol.Len(); i++{
+		dx := dxCol.Elem(i).Val().(string)
+		if _, ok := classes[dx]; !ok{
+			classes[dx] = 1
+		} else {
+			classes[dx] += 1
+		}
+	}
+	for k, v := range classes{
+		fmt.Printf("%s\t%4d\n", k, v)
+	}
+
+
 	// 4. Split uniqueDF to train, valid
-	folds, err := dutil.NewKFold(uniqueDF.Nrow(), dutil.WithNFolds(5))
+	lines := uniqueDF.Select([]string{"image_id","dx"}).Records()[1:]
+	var ds []SkinDz
+	for i, l := range lines{
+		imageId := l[0]
+		dx := l[1]
+		ds = append(ds, SkinDz{
+			ID: i,
+			ClassID: classes[dx],
+			Class: dx,
+			File: imageId,
+		})
+	}
+
+	var classnames []string
+	for k  := range classes{
+		classnames = append(classnames, k)
+	}
+	// Make 5folds for each class and merge them
+	folds, err := makeFolds(ds, classnames)
 	if err != nil{
 		return nil, nil, err
 	}
 
-	validIds := folds.Split()[0].Test
+	validIds := folds[0].Test
 	validDF := uniqueDF.Subset(validIds).Select(originDF.Names())
-
 	validLesionIds := validDF.Select(0)
 	validLesionIds.SetNames("lesion_id")
 
@@ -116,22 +149,17 @@ func makeTrainValid(csvFile, dataDir string) (trainSet, validSet []SkinDz, err e
 	if err != nil{
 		return nil, nil, err
 	}
+
 	train, err := makeDataset(trainDF, dataDir)
 	if err != nil{
 		return nil, nil, err
 	}
 
-	classNames := []string{
-		"mel",
-		"nv",
-		"bcc",
-		"akiec",
-		"bkl",
-		"df",
-		"vasc",
+	if !balancing{
+		return train, valid, nil
 	}
 
-	balancedTrain := balancedSampling(train, classNames)
+	balancedTrain := balancedSampling(train, classnames)
 
 	return balancedTrain, valid, nil
 }
@@ -156,6 +184,7 @@ func isUnique(df dataframe.DataFrame, lesionID string) bool{
 	return false
 }
 
+// returns whether lesionID in valid set.
 func inValidSet(validDF dataframe.DataFrame, lesionID string) bool{
 	fil := validDF.Filter(dataframe.F{
 		Colidx: 0,

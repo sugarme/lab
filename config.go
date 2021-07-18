@@ -67,6 +67,8 @@ type FindLRConfig struct{
 		StartLR float64 `yaml:"start_lr"`
 		EndLR   float64 `yaml:"end_lr"`
 		NumIter int     `yaml:"num_iter"`
+		DivergeThreshold float64 `yaml:"diverge_threshold"`
+		SaveDir string `yaml:"save_dir"`
 		SaveFig bool    `yaml:"save_fig"`
 }
 

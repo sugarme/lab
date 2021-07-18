@@ -11,7 +11,7 @@ import (
 func findLR(cfg *lab.Config) error{
 	csvFile := cfg.Dataset.CSVFilename
 	dataDir := cfg.Dataset.DataDir[0]
-	trainSet, _, err := makeTrainValid(csvFile, dataDir)
+	trainSet, _, err := makeTrainValid(csvFile, dataDir, dataBalancing) // upsampling or not
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -49,10 +49,29 @@ func findLR(cfg *lab.Config) error{
 		logger.Printf("Previously trained weights loaded from %q\n", cfg.Train.LoadPrevious)
 	}
 
-	criterion, err := b.BuildLoss()
-	if err != nil {
-		err = fmt.Errorf("Building loss function failed: %w", err)
-		log.Fatal(err)
+	// Data Balancing and Loss function:
+	// =================================
+	classes := []string{
+		"mel",
+		"nv",
+		"bcc",
+		"akiec",
+		"bkl",
+		"df",
+		"vasc",
+	}
+	var criterion lab.LossFunc
+	switch dataBalancing{
+	case true:
+		criterion, err = b.BuildLoss()
+		if err != nil {
+			err = fmt.Errorf("Building loss function failed: %w", err)
+			log.Fatal(err)
+		}
+	case false:
+		classWeights := classWeights(trainSet, classes)
+		logger.Printf("class weights: %0.4f\n", classWeights)
+		criterion = CustomCrossEntropyLoss(WithLossFnWeights(classWeights))
 	}
 
 	opt, err := b.BuildOptimizer(model.Weights)
@@ -65,8 +84,12 @@ func findLR(cfg *lab.Config) error{
 	endLR := cfg.FindLR.EndLR
 	steps := cfg.FindLR.NumIter
 	saveFig := cfg.FindLR.SaveFig
-	checkpointDir = cfg.Evaluation.Params.SaveCheckpointDir
+	saveDir := cfg.FindLR.SaveDir
+	divergedThreshold := cfg.FindLR.DivergeThreshold
 
-	finder := lab.NewLRFinder(model, trainLoader, opt, criterion, checkpointDir)
-	return finder.FindLR(startLR, endLR, steps, saveFig)
+	finder, err := lab.NewLRFinder(model, trainLoader, opt, criterion, saveDir)
+	if err != nil{
+		log.Fatal(err)
+	}
+	return finder.FindLR(startLR, endLR, steps, saveFig, false, lab.WithLRFinderOptionDivergeThreshold(divergedThreshold))
 }

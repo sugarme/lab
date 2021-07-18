@@ -55,21 +55,21 @@ find_lr:
   save_fig: true
 
 train:
-  batch_size: 128
+  batch_size: 10
   trainer: Trainer
   params:
     gradient_accumulation: 1
-    num_epochs: 30
+    num_epochs: 10
     steps_per_epoch: 0
     validate_interval: 1
     verbosity: 100
     amp: false
 
 evaluation:
-  batch_size: 128
+  batch_size: 10
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/custom-2e-5
+    save_checkpoint_dir: checkpoint/custom-1e2
     save_best: true
     prefix: resnet
     metrics: [skin_accuracy]
@@ -82,7 +82,7 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 2.0e-5
+    lr: 1.0e-2
 
 scheduler:
   name: None

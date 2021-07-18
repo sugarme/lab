@@ -43,13 +43,19 @@ type LRFinder struct {
 	Scheduler *Scheduler
 	Criterion func(logits, labels *ts.Tensor) *ts.Tensor // loss function
 	BestLoss float64
-	CheckpointDir string
+	SaveDir string
 	CUDA    bool
 	History []history
 }
 
 // NewLRFinder creates a new LRFinder.
-func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, criterion LossFunc, checkpointDir string, cudaOpt ...bool) *LRFinder{
+func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, criterion LossFunc, saveDir string, cudaOpt ...bool) (*LRFinder, error){
+	// Make SaveDir if not existing
+	err := MakeDir(saveDir)
+	if err != nil{
+		err = fmt.Errorf("Make Directory to save data failed: %w\n", err)
+		return nil, err
+	}
 	cuda := true
 	if len(cudaOpt) > 0{
 		cuda = cudaOpt[0]
@@ -61,10 +67,10 @@ func NewLRFinder(model *Model, loader *dutil.DataLoader, opt *nn.Optimizer, crit
 		Scheduler: nil, // Will build it when calling FindLR()
 		Criterion: criterion,
 		BestLoss: math.Inf(1),
-		CheckpointDir: checkpointDir,
+		SaveDir: saveDir,
 		CUDA: cuda,
 		History: nil,
-	}
+	}, nil
 }
 
 type lrfinderOptions struct{
@@ -102,7 +108,7 @@ func WithLRFinderOptionDivergeThreshold(v float64) LRFinderOption{
 }
 
 // FindLR train data over specified start and end LR for steps then save data to CSV and (optional) plot graph of LR vs Loss.
-func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, opts ...LRFinderOption) error{
+func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, customTicks bool,opts ...LRFinderOption) error{
 	options := defaultLRFinderOptions()
 	// set start learning rate
 	fd.Optimizer.SetLRs([]float64{startLR})
@@ -223,7 +229,7 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 	} // for-loop train
 
 	// Save data to CSV
-	csvFile, err := os.Create(fmt.Sprintf("%s/find-lr.csv", fd.CheckpointDir))
+	csvFile, err := os.Create(fmt.Sprintf("%s/find-lr.csv", fd.SaveDir))
 	if err != nil{
 		err = fmt.Errorf("Create csv file failed: %w\n", err)
 		return err
@@ -247,8 +253,7 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 
 	// Generate graph if set so.
 	if saveFig{
-		ticks := []float64{startLR, endLR}
-		err = plotLossLR(fd.History, fd.CheckpointDir, ticks...)
+		err = plotLossLR(fd.History, fd.SaveDir, customTicks)
 		if err != nil{
 			return err
 		}
@@ -257,7 +262,7 @@ func(fd *LRFinder) FindLR(startLR, endLR float64, totalSteps int, saveFig bool, 
 	return nil
 }
 
-func plotLossLR(data []history, dir string, tickOpts ...float64) error{
+func plotLossLR(data []history, dir string, customTicks bool) error{
 	p := plot.New()
 
 	p.Title.Text = "Learning Rate Finding"
@@ -265,10 +270,12 @@ func plotLossLR(data []history, dir string, tickOpts ...float64) error{
 	p.Y.Label.Text = "loss"
 	p.Legend.Top = true
 	p.Legend.Padding = 5
-	p.X.Tick.Marker = LRTicks{}
-	p.X.Tick.Label.Rotation = 45
-	p.X.Tick.Label.YAlign = draw.YCenter
-	p.X.Tick.Label.XAlign = draw.XRight
+	if customTicks{
+		p.X.Tick.Marker = LRTicks{}
+		p.X.Tick.Label.Rotation = 45
+		p.X.Tick.Label.YAlign = draw.YCenter
+		p.X.Tick.Label.XAlign = draw.XRight
+	}
 	
 	points :=  make(plotter.XYs, len(data))
 	for i, hx := range data{

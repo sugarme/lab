@@ -247,7 +247,7 @@ func getSet(indices []int, data []SkinDz) []SkinDz{
 	return ds
 }
 
-func printStat(ds []SkinDz, classNames []string){
+func printStat(logger *lab.Logger, ds []SkinDz, classNames []string){
 	classes := make(map[string]int, len(classNames))
 	n := len(ds)
 	for _, v := range ds{
@@ -262,9 +262,9 @@ func printStat(ds []SkinDz, classNames []string){
 	for _, name := range classNames{
 		count := classes[name]
 		freq := float64(count)/float64(n)
-		fmt.Printf("%-20s\t%0.4f(%4d/%d)\n", name, freq, count, n)
+		logger.Printf("%-20s\t%0.4f(%4d/%d)\n", name, freq, count, n)
 	}
-	fmt.Println()
+	logger.Println()
 }
 
 func classWeights(ds []SkinDz, classNames []string) []float64{
