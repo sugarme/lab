@@ -380,17 +380,25 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 				t.Scheduler.Step(nn.WithLoss(validMetric))
 			}
 			t.Logger.Printf("Validation took %0.2f mins\n", time.Since(validStartTime).Minutes())
+
+			// Early stopping
+			if t.Evaluator.CheckStopping(){
+				t.Logger.Printf("Training has not improved for %d consecutive epochs. Early stopping now....\n", t.Evaluator.EarlyStopping)
+				break
+			}
 		}
+
+		t.Loader.Reset()
+		t.Logger.Printf("Completed epoch %d. Taken time: %0.2f mins. Reset data loader...\n", t.CurrentEpoch, time.Since(t.TimeTracker.LastCheck).Minutes())
+		t.TimeTracker.LastCheck = time.Now()
+
 
 		// Update learning rate
 		if t.Scheduler.Update == "on_epoch"  && t.Scheduler.LRScheduler != nil {
 			t.Scheduler.Step()
 		}
+
 		t.CurrentEpoch += 1
-		// t.Steps = 0
-		t.Loader.Reset()
-		t.Logger.Printf("Completed epoch %d. Taken time: %0.2f mins. Reset data loader...\n", t.CurrentEpoch, time.Since(t.TimeTracker.LastCheck).Minutes())
-		t.TimeTracker.LastCheck = time.Now()
 
 		// Reset best model if using cosine-annealing-warm-restarts
 		if t.Scheduler.Name == "CosineAnnealingWarmRestarts"   && t.Scheduler.LRScheduler != nil{

@@ -25,7 +25,12 @@ transform:
     - name: "RandomRotate"
       params:
         min: 0.0
-        max: 90.0
+        max: 20.0
+    - name: "ColorJitter"
+      params:
+        brightness: [0.1]
+        contrast: [0.1]
+        hue: [0.1]
     - name: "Normalize"
       params:
         mean: [0.485, 0.456, 0.406]
@@ -65,7 +70,7 @@ train:
   trainer: Trainer
   params:
     gradient_accumulation: 1
-    num_epochs: 10
+    num_epochs: 100
     steps_per_epoch: 0
     validate_interval: 1
     verbosity: 100
@@ -75,13 +80,14 @@ evaluation:
   batch_size: 32
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/densenet121-1e-3
+    save_checkpoint_dir: checkpoint/densenet121-1e-7-repeat1
     save_best: true # replace previous best with new best model
     prefix: densenet
     metrics: [skin_accuracy]
-    valid_metric: skin_accuracy
-    mode: max 
+    valid_metric: valid_loss
+    mode: min
     improve_thresh: 1.0e-6
+    early_stopping: 5
 
 loss:
   name: CrossEntropyLoss
@@ -90,7 +96,7 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 1.0e-3
+    lr: 1.0e-7
 
 scheduler:
   name: None

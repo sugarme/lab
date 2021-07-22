@@ -23,7 +23,6 @@ type EvalOptions struct{
 	CUDA bool
 	Debug bool
 	LabelsAvailable bool
-	EarlyStopping int
 }
 
 type EvalOption func(*EvalOptions)
@@ -33,7 +32,6 @@ func defaultEvalOptions() *EvalOptions{
 		CUDA: true,
 		Debug: false,
 		LabelsAvailable: true,
-		EarlyStopping: math.MaxInt32,
 	}
 }
 
@@ -58,12 +56,6 @@ func WithEvalDebug(debug bool) EvalOption{
 func WithEvalLabelsAvailable(l bool) EvalOption{
 	return func(o *EvalOptions){
 		o.LabelsAvailable = l
-	}
-}
-
-func WithEvalEarlyStopping(v int) EvalOption{
-	return func(o *EvalOptions){
-		o.EarlyStopping = v
 	}
 }
 
@@ -166,7 +158,7 @@ type Evaluator struct {
 	// Mode should be one of ['min', 'max']
 	// This determines whether a lower (min) or higher (max)
 	// valid_metric is considered to be better
-	Mode string // TODO. change to fixed options
+	Mode string
 	// This determines by how much the valid_metric needs to improve
 	// to be considered an improvement
 	ImproveThresh float64
@@ -278,7 +270,7 @@ func(e *Evaluator) calculateMetrics(logits, target *ts.Tensor) (map[string]float
 		metrics[n] = val
 	}
 
-	validMetric := metrics[e.ValidMetric.Name()]
+	validMetric := e.ValidMetric.Calculate(logits, target, WithMetricThreshold(e.Threshold))
 	metrics["vm"] = validMetric
 
 	return metrics, validMetric, nil
@@ -323,6 +315,10 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 	saveBest := cfg.Evaluation.Params.SaveBest
 	improveThresh := cfg.Evaluation.Params.ImproveThresh
 	mode := cfg.Evaluation.Params.Mode
+	earlyStopping := cfg.Evaluation.Params.EarlyStopping
+	if earlyStopping == 0{
+		earlyStopping = math.MaxInt32
+	}
 
 	metricsFile := fmt.Sprintf("%s/%s", saveCheckpointDir, "metrics.csv")
 
@@ -340,7 +336,7 @@ func NewEvaluator(cfg *Config, loader *dutil.DataLoader, metrics []Metric, valid
 		ImproveThresh: improveThresh,
 		SaveBest: saveBest,
 		MetricsFile: metricsFile,
-		EarlyStopping: options.EarlyStopping,
+		EarlyStopping: earlyStopping,
 		Threshold: options.Threshold,
 		History: nil,
 		BestModel: "",

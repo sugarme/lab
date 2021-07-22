@@ -97,6 +97,7 @@ func trainClassification(cfg *lab.Config) {
 
 	// Data Balancing and Loss function:
 	// =================================
+	/*
 	var criterion lab.LossFunc
 	switch dataBalancing{
 	case true:
@@ -113,6 +114,19 @@ func trainClassification(cfg *lab.Config) {
 		logger.Printf("Data balancing using custom CrossEntropyLoss with class weights.\n")
 		logger.Printf("class weights: %0.4f\n", classWeights)
 	}
+	*/
+
+	// Ref. https://github.com/skrantidatta/Attention-based-Skin-Cancer-Classification/blob/main/Ham10000%20models/Model%20without%20Soft%20Attention/ResNet34.ipynb
+	classWeights := []float64{
+		5.0, // mel
+		1.0,
+		1.0,
+		1.0,
+		1.0,
+		1.0,
+		1.0,
+	}
+	criterion := CustomCrossEntropyLoss(WithLossFnWeights(classWeights))
 
 	// Build optimizer
 	optimizer, err := b.BuildOptimizer(model.Weights)
@@ -131,8 +145,28 @@ func trainClassification(cfg *lab.Config) {
 	var scheduler *lab.Scheduler  = lab.NewScheduler(nil, "", "")
 
 	// Build metrics
-	var metrics []lab.Metric = []lab.Metric{NewSkinAccuracy()}
-	var validMetric lab.Metric = NewSkinAccuracy()
+	var metrics []lab.Metric
+	for _, m := range cfg.Evaluation.Params.Metrics{
+		switch m{
+		case "skin_accuracy":
+			metric := NewSkinAccuracy()
+			metrics = append(metrics, metric)
+
+		default:
+			log.Fatalf("Unsupported metric: %q\n", m)
+		}
+	}
+
+	var validMetric lab.Metric
+	switch cfg.Evaluation.Params.ValidMetric{
+	case "skin_accuracy":
+		validMetric = NewSkinAccuracy()
+	case "valid_loss":
+		validMetric = NewValidLoss(criterion)
+	default:
+		log.Fatalf("Unsupported metric: %q\n", cfg.Evaluation.Params.ValidMetric)
+	}
+	
 
 	// Build Evaluator
 	evaluator, err := lab.NewEvaluator(cfg, validLoader, metrics, validMetric)

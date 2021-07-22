@@ -85,6 +85,7 @@ type EvaluationConfig struct{
 			ValidMetric       string   `yaml:"valid_metric"`
 			Mode              string   `yaml:"mode"`
 			ImproveThresh     float64  `yaml:"improve_thresh"`
+			EarlyStopping int `yaml:"early_stopping"`
 		} `yaml:"params"`
 }
 
