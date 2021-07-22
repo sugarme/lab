@@ -68,11 +68,12 @@ find_lr:
 train:
   batch_size: 128
   trainer: Trainer
+  load_previous:
   params:
     gradient_accumulation: 1
-    num_epochs: 300
+    num_epochs: 100
     steps_per_epoch: 0
-    validate_interval: 1
+    validate_interval: 10
     verbosity: 100
     amp: false
 
@@ -80,14 +81,14 @@ evaluation:
   batch_size: 128
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/resnet34-1e6-repeat2
+    save_checkpoint_dir: checkpoint/resnet34-1e6-repeat3
     save_best: true # replace previous best with new best model
     prefix: resnet
     metrics: [skin_accuracy]
     valid_metric: valid_loss
     mode: min
     improve_thresh: 1.0e-6
-    early_stopping: 10
+    early_stopping: 2
 
 loss:
   name: CrossEntropyLoss

@@ -164,6 +164,33 @@ func makeTrainValid(csvFile, dataDir string, balancing bool) (trainSet, validSet
 	return balancedTrain, valid, nil
 }
 
+func saveData(data []SkinDz, file string) error{
+	f, err := os.Create(file)
+	if err != nil{
+		err = fmt.Errorf("saveData - create file failed: %w\n", err)
+		return err
+	}
+	defer f.Close()
+	// header
+	h := fmt.Sprintf("id,class,class_id,file\n")
+	_, err = f.WriteString(h)
+	if err != nil{
+		err = fmt.Errorf("saveData - write header failed: %w\n", err)
+		return err
+	}
+
+	for _, item := range data{
+		line := fmt.Sprintf("%d,%s,%d,%s\n", item.ID, item.Class, item.ClassID, item.File)
+		_, err := f.WriteString(line)
+		if err != nil{
+			err = fmt.Errorf("saveData - write line failed: %w\n", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 func isUnique(df dataframe.DataFrame, lesionID string) bool{
 	fil := df.Filter(dataframe.F{
 		Colidx: 0,

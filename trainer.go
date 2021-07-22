@@ -389,7 +389,7 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 		}
 
 		t.Loader.Reset()
-		t.Logger.Printf("Completed epoch %d. Taken time: %0.2f mins. Reset data loader...\n", t.CurrentEpoch, time.Since(t.TimeTracker.LastCheck).Minutes())
+		t.Logger.Printf("Completed epoch %d. Taken time: %0.2f mins. Reset data loader...\n", t.CurrentEpoch + 1, time.Since(t.TimeTracker.LastCheck).Minutes())
 		t.TimeTracker.LastCheck = time.Now()
 
 

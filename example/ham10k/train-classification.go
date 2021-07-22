@@ -38,6 +38,18 @@ func trainClassification(cfg *lab.Config) {
 		log.Fatal(err)
 	}
 
+	// Save to csv files for continuous training
+	trainCSV := fmt.Sprintf("%s/train.csv", cfg.Evaluation.Params.SaveCheckpointDir)
+	err = saveData(trainSet, trainCSV)
+	if err != nil{
+		log.Fatalf("Save trainCSV failed.\n")
+	}
+	validCSV := fmt.Sprintf("%s/valid.csv", cfg.Evaluation.Params.SaveCheckpointDir)
+	err = saveData(validSet, validCSV)
+	if err != nil{
+		log.Fatalf("Save validCSV failed.\n")
+	}
+
 	// Log dataset summary
 	logger.Printf("Train Dataset:\n")
 	logger.Printf("--------------\n")
