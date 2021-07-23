@@ -125,22 +125,9 @@ func trainSegmentation(cfg *lab.Config, isFull bool) {
 	}
 	evaluator.SetLogger(logger)
 
-	trainer := &lab.Trainer{
-		Loader:    trainLoader,
-		Model:     model,
-		Criterion: criterion,
-		Optimizer: optimizer,
-		Scheduler: scheduler,
-		Evaluator: evaluator,
-		Logger:    logger,
-		Verbosity: cfg.Train.Params.Verbosity,
-		Epochs:    cfg.Train.Params.Epochs,
+	trainer := lab.NewTrainer(cfg, trainLoader, model, optimizer, scheduler, criterion, evaluator, logger)
 
-		LossTracker: lab.NewLossTracker(),
-		TimeTracker: lab.NewTimeTracker(),
-	}
-
-	trainer.Train(cfg)
+	trainer.Train()
 }
 
 

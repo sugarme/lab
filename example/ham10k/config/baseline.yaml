@@ -52,6 +52,7 @@ train:
     validate_interval: 5
     verbosity: 1
     amp: false
+    cuda: true
 
 evaluation:
   batch_size: 1

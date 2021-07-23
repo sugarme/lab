@@ -190,6 +190,7 @@ type Trainer struct {
 	Criterion func(logits, labels *ts.Tensor) *ts.Tensor // loss function
 	Evaluator *Evaluator
 	Logger    *Logger
+	Config *Config
 
 	// Step
 	GradientAccumulation float64
@@ -207,54 +208,60 @@ type Trainer struct {
 	LossTracker  *LossTracker
 }
 
-type TrainOptions struct {
-	Verbosity    int
-	CUDA         bool
-	AMP          bool
-}
+func NewTrainer(cfg *Config, loader *dutil.DataLoader, model *Model, optimizer *nn.Optimizer, scheduler *Scheduler, criterion LossFunc, evaluator *Evaluator, logger *Logger) *Trainer{
+		// Init
+		gradientAccum := cfg.Train.Params.GradientAcc
+		var stepsPerEpoch int
+		if cfg.Train.Params.StepsPerEpoch == 0 {
+			stepsPerEpoch = loader.Len()
+		} else {
+			stepsPerEpoch = cfg.Train.Params.StepsPerEpoch
+		}
+		cuda := cfg.Train.Params.CUDA
+		currEpoch := cfg.Train.StartEpoch
+		epochs := cfg.Train.Params.Epochs + currEpoch
+		validateInterval := cfg.Train.Params.ValidateInterval
+		totalSteps := stepsPerEpoch * epochs
+		steps := 0
+		amp := cfg.Train.Params.Amp
+		verbosity := cfg.Train.Params.Verbosity
+		lossTracker := NewLossTracker()
+		timeTracker := NewTimeTracker()
 
-type TrainOption func(*TrainOptions)
+	return &Trainer{
+		Loader: loader,
+		Model: model,
+		Optimizer: optimizer,
+		Scheduler: scheduler,
+		Criterion: criterion,
+		Evaluator: evaluator,
+		Logger: logger,
+		Config: cfg,
 
-func defaultTrainOptions() *TrainOptions {
-	return &TrainOptions{
-		Verbosity:    100,
-		CUDA:         true,
-		AMP: false,
+		// Step
+		GradientAccumulation: gradientAccum,
+		Epochs : epochs,
+		StepsPerEpoch: stepsPerEpoch,
+		ValidateInterval: validateInterval,
+		TotalSteps: totalSteps,
+		Steps: steps,
+		Verbosity: verbosity,
+		CUDA: cuda,
+		AMP: amp,
+
+		CurrentEpoch: currEpoch,
+		TimeTracker: timeTracker,
+		LossTracker: lossTracker,
 	}
 }
 
-func WithAMP() TrainOption {
-	return func(o *TrainOptions) {
-		o.AMP = true
-	}
-}
-
-func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
-	opts := defaultTrainOptions()
-	for _, o := range trainOpts {
-		o(opts)
-	}
-
-	// Init
-	t.GradientAccumulation = cfg.Train.Params.GradientAcc
-	t.Epochs = cfg.Train.Params.Epochs
-	if cfg.Train.Params.StepsPerEpoch == 0 {
-		// TODO. pull request to add Loader.Len() in `gotch`
-		// stepsPerEpoch = len(dataLoader)
-	} else {
-		t.StepsPerEpoch = cfg.Train.Params.StepsPerEpoch
-	}
-
-	t.ValidateInterval = cfg.Train.Params.ValidateInterval
-	t.TotalSteps = t.StepsPerEpoch * t.Epochs
-	t.Steps = 0
-	t.CurrentEpoch = 0
+func (t *Trainer) Train() {
 
 	// Log configuration
 	t.Logger.Printf("DATE: %v\n", time.Now())
 	t.Logger.Printf("----------\n\n")
 	t.Logger.Printf("TRAINING CONFIGURATION:\n")
-	cfgMsg := fmt.Sprintf("%+v\n", cfg)
+	cfgMsg := fmt.Sprintf("%+v\n", t.Config)
 	t.Logger.Printf(cfgMsg)
 	t.Logger.Printf("----------\n\n")
 	epochMsg := fmt.Sprintf("Sample size: %d - Steps per epoch: %v - Epochs: %v - Total steps: %v\n", t.Loader.Len() ,t.StepsPerEpoch, t.Epochs, t.TotalSteps)

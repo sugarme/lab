@@ -60,6 +60,7 @@ type TrainConfig struct {
 		ValidateInterval int     `yaml:"validate_interval"`
 		Verbosity        int     `yaml:"verbosity"`
 		Amp              bool    `yaml:"amp"`
+		CUDA 						 bool		 `yaml:"cuda"`
 	} `yaml:"params"`
 }
 

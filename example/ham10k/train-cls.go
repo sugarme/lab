@@ -206,24 +206,9 @@ func trainClassification(cfg *lab.Config) {
 	}
 	evaluator.SetLogger(logger)
 
-	// Build Trainer
-	trainer := &lab.Trainer{
-		Loader:    trainLoader,
-		Model:     model,
-		Criterion: criterion,
-		Optimizer: optimizer,
-		Scheduler: scheduler,
-		Evaluator: evaluator,
-		Logger:    logger,
-		Verbosity: cfg.Train.Params.Verbosity,
-		CurrentEpoch: cfg.Train.StartEpoch,
-		Epochs:    cfg.Train.Params.Epochs + cfg.Train.StartEpoch,
-
-		LossTracker: lab.NewLossTracker(),
-		TimeTracker: lab.NewTimeTracker(),
-	}
+	trainer := lab.NewTrainer(cfg, trainLoader, model, optimizer, scheduler, criterion, evaluator, logger)
 
 	// Now, time to train
 	fmt.Printf("Start training...From epoch: %d\n", cfg.Train.StartEpoch)
-	trainer.Train(cfg)
+	trainer.Train()
 }
