@@ -8,7 +8,7 @@ import (
 	"github.com/sugarme/lab"
 )
 
-func train(cfg *lab.Config, isFull bool) {
+func trainSegmentation(cfg *lab.Config, isFull bool) {
 	fmt.Printf("Start training...\n")
 	dataDir := cfg.Dataset.DataDir[0]
 	var(

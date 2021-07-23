@@ -47,7 +47,7 @@ Dice Coefficient is ~ 89.76%
 
 **train/valid losses**
 
-![Train Valid Loss Graph](segmentation-loss.png)
+![Train Valid Loss Graph](loss-seg.png)
 
 ## Classification
 

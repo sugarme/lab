@@ -25,7 +25,12 @@ transform:
     - name: "RandomRotate"
       params:
         min: 0.0
-        max: 90.0
+        max: 20.0
+    - name: "ColorJitter"
+      params:
+        brightness: [0.1]
+        contrast: [0.1]
+        hue: [0.1]
     - name: "Normalize"
       params:
         mean: [0.485, 0.456, 0.406]
@@ -33,6 +38,10 @@ transform:
   valid:
     is_transformer: false
     augment_opts:
+    - name: "Resize"
+      params:
+        height: 224
+        width: 224
     - name: "Normalize"
       params:
         mean: [0.485, 0.456, 0.406]
@@ -53,27 +62,35 @@ find_lr:
   end_lr: 1
   num_iter: 500
   save_fig: true
+  diverge_threshold: 100
+  save_dir: checkpoint/resnet34-find-lr
 
 train:
-  batch_size: 10
+  batch_size: 128
   trainer: Trainer
+  load_previous: checkpoint/resnet34-1e6-repeat5/RESNET_002_VM-1.7510.BIN
+  start_epoch: 23
+  train_count: 2 # For naming file purpose
   params:
     gradient_accumulation: 1
-    num_epochs: 10
+    num_epochs: 60
     steps_per_epoch: 0
     validate_interval: 1
     verbosity: 100
     amp: false
 
 evaluation:
-  batch_size: 10
+  batch_size: 128
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/custom-1e2
-    save_best: true
+    save_checkpoint_dir: checkpoint/resnet34-1e6-repeat5
+    save_best: true # replace previous best with new best model
     prefix: resnet
     metrics: [skin_accuracy]
-    valid_metric: skin_accuracy
+    valid_metric: valid_loss
+    mode: min
+    improve_thresh: 1.0e-6
+    early_stopping: 40
 
 loss:
   name: CrossEntropyLoss
@@ -82,7 +99,7 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 1.0e-2
+    lr: 1.0e-6
 
 scheduler:
   name: None

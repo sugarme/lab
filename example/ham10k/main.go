@@ -104,9 +104,6 @@ func main() {
 	logger.Printf("Saving to %q...\n", cfg.Evaluation.Params.SaveCheckpointDir)
 
 	switch task {
-	case "train":
-		train(cfg, fullDataset)
-
 	case "check-loader":
 		err := checkLoader(cfg)
 		if err != nil{
@@ -127,11 +124,10 @@ func main() {
 			log.Fatal(err)
 		}
 
-	case "train-classification":
-		// ds, folds, err := preprocess(cfg)
-		// if err != nil{
-			// log.Fatal(err)
-		// }
+	case "train-seg":
+		trainSegmentation(cfg, fullDataset)
+
+	case "train-cls":
 		trainClassification(cfg)
 
 	case "split-data":
@@ -147,7 +143,6 @@ func main() {
 		}
 
 	case "make-graph":
-		// err := makeLossGraphFromCSV(cfg.Evaluation.Params.SaveCheckpointDir)
 		err := makeLossGraphFromCSV(graphDir)
 		if err != nil{
 			log.Fatal(err)
