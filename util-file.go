@@ -16,3 +16,16 @@ func MakeDir(dir string) error{
 
 	return nil
 }
+
+// IsFileExist checks whether file exists with input file path.
+func IsFileExist(file string) bool{
+	if _, err := os.Stat(file); err == nil {
+		return true
+	} else if os.IsNotExist(err) {
+		return false
+	} else {
+		// Something wrong and we want to stop now.
+		err := fmt.Errorf("IsFileExist - check file exist failed: %w\n", err)
+		panic(err)
+	}
+}

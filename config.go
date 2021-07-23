@@ -51,6 +51,8 @@ type ModelConfig struct {
 type TrainConfig struct {
 	BatchSize    int64  `yaml:"batch_size"`
 	LoadPrevious string `yaml:"load_previous"` // filepath to load pretrained weights
+	StartEpoch int `yaml:"start_epoch"` // start from epoch for continueing traing
+	TrainCount int `yaml:"train_count"` // for naming file when continuing training
 	Params       struct {
 		GradientAcc      float64 `yaml:"gradient_accumulation"`
 		Epochs           int     `yaml:"num_epochs"`

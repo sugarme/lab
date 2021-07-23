@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
@@ -189,6 +192,50 @@ func saveData(data []SkinDz, file string) error{
 	}
 
 	return nil
+}
+
+// load data from csv file.
+func loadData(file string)([]SkinDz, error){
+	f, err := os.Open(file)
+	if err != nil{
+		err = fmt.Errorf("loadData - open file failed: %w\n", err)
+		return nil, err
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	var isHeader bool = true
+	var data []SkinDz
+	for sc.Scan(){
+		// skip header
+		if isHeader{
+			_ = sc.Text()
+			isHeader = false
+			continue
+		}
+		line := sc.Text()
+		fields := strings.Split(line, ",")
+		id, err := strconv.Atoi(fields[0])
+		if err != nil{
+			err = fmt.Errorf("Convert string ID failed: %w\n", err)
+			return nil, err
+		}
+		classId, err := strconv.Atoi(fields[2])
+		if err != nil{
+			err = fmt.Errorf("Convert class ID failed: %w\n", err)
+			return nil, err
+		}
+
+		dz := SkinDz{
+			ID: id,
+			Class: fields[1],
+			ClassID: classId,
+			File: fields[3],
+		}
+		data = append(data, dz)
+	}
+
+	return data, nil
 }
 
 func isUnique(df dataframe.DataFrame, lesionID string) bool{

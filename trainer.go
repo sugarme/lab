@@ -127,8 +127,7 @@ func(lt *LossTracker) Reset(){
 	lt.Losses = make([]LossItem, 0)
 }
 
-func(lt *LossTracker) SaveLossesToCSV(saveDir string) error{
-	filePath := fmt.Sprintf("%s/losses.csv", saveDir)
+func(lt *LossTracker) SaveLossesToCSV(filePath string) error{
 	file, err := os.Create(filePath)
 	defer file.Close()
 	
@@ -155,8 +154,7 @@ func(lt *LossTracker) SaveLossesToCSV(saveDir string) error{
 	return nil
 }
 
-func(lt *LossTracker) SaveValidLossesToCSV(saveDir string) error{
-	filePath := fmt.Sprintf("%s/valid-losses.csv", saveDir)
+func(lt *LossTracker) SaveValidLossesToCSV(filePath string) error{
 	file, err := os.Create(filePath)
 	defer file.Close()
 	
@@ -416,17 +414,23 @@ func (t *Trainer) Train(cfg *Config, trainOpts ...TrainOption) {
 	t.Logger.Close()
 
 	// Save losses to csv
-	err := t.LossTracker.SaveLossesToCSV(cfg.Evaluation.Params.SaveCheckpointDir)
+	tlossFile := fmt.Sprintf("%s/train-loss-%d.csv", cfg.Evaluation.Params.SaveCheckpointDir, cfg.Train.TrainCount)
+	err := t.LossTracker.SaveLossesToCSV(tlossFile)
 	if err != nil{
 		fmt.Print(err)
 	}
-	t.LossTracker.SaveValidLossesToCSV(cfg.Evaluation.Params.SaveCheckpointDir)
+	vlossFile := fmt.Sprintf("%s/valid-loss-%d.csv", cfg.Evaluation.Params.SaveCheckpointDir, cfg.Train.TrainCount)
+	t.LossTracker.SaveValidLossesToCSV(vlossFile)
 	if err != nil{
 		fmt.Print(err)
 	}
 
 	// Plot train and valid losses and save to a png file.
-	t.makeLossGraph()
+	gFile := fmt.Sprintf("%s/loss-%d.png", cfg.Evaluation.Params.SaveCheckpointDir, cfg.Train.TrainCount)
+	err = t.makeLossGraph(gFile)
+	if err != nil{
+		fmt.Print(err)
+	}
 }
 
 func (t *Trainer) SchedulerStep() {
@@ -464,7 +468,7 @@ func (t *Trainer) PrintProgress() {
 	t.Logger.SendSlack(msg)
 }
 
-func (t *Trainer) makeLossGraph(){
+func (t *Trainer) makeLossGraph(filePath string) error{
 	// train points
 	tloss := lossByEpoch(t.LossTracker.Losses)
 	vloss := lossByEpoch(t.LossTracker.ValidLosses)
@@ -496,16 +500,17 @@ func (t *Trainer) makeLossGraph(){
 		"valid", validPoints,
 	)
 	if err != nil {
-		err := fmt.Errorf("Making train loss plot failed: %w\n", err)
-		log.Fatal(err)
+		err := fmt.Errorf("Making train - valid loss plot failed: %w\n", err)
+		return err
 	}
 
 	// Save the plot to a PNG file.
-	lossFile := fmt.Sprintf("%s/loss.png", t.Evaluator.SaveCheckpointDir)
-	if err := p.Save(4*vg.Inch, 4*vg.Inch, lossFile); err != nil {
+	if err := p.Save(4*vg.Inch, 4*vg.Inch, filePath); err != nil {
 		err := fmt.Errorf("Saving train valid loss plot failed: %w\n", err)
-		log.Fatal(err)
+		return err
 	}	
+
+	return nil
 }
 
 func lossByEpoch(data []LossItem) []float64{

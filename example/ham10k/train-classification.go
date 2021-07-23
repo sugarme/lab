@@ -27,28 +27,47 @@ func trainClassification(cfg *lab.Config) {
 		log.Fatal(err)
 	}
 
-	// // Fold 1
-	// trainSet := getSet(folds[0].Train, data)
-	// validSet := getSet(folds[0].Test, data)
-	// trainSet, validSet, err := makeClassificationDatasets(cfg)
-	csvFile := cfg.Dataset.CSVFilename
-	dataDir := cfg.Dataset.DataDir[0]
-	trainSet, validSet, err := makeTrainValid(csvFile, dataDir, dataBalancing) // whether to balance data
-	if err != nil{
-		log.Fatal(err)
+	var trainSet, validSet []SkinDz
+	switch cfg.Train.StartEpoch{
+	case 0: // train from scratch
+		csvFile := cfg.Dataset.CSVFilename
+		dataDir := cfg.Dataset.DataDir[0]
+		trainSet, validSet, err = makeTrainValid(csvFile, dataDir, dataBalancing) // whether to balance data
+		if err != nil{
+			log.Fatal(err)
+		}
+
+		// Save to csv files for continuous training
+		trainCSV := fmt.Sprintf("%s/train.csv", cfg.Evaluation.Params.SaveCheckpointDir)
+		if lab.IsFileExist(trainCSV) {
+			log.Fatalf("Trying to save CSV with name %q. File existed. \n", trainCSV)
+		}
+		err = saveData(trainSet, trainCSV)
+		if err != nil{
+			log.Fatalf("Save trainCSV failed.\n")
+		}
+		validCSV := fmt.Sprintf("%s/valid.csv", cfg.Evaluation.Params.SaveCheckpointDir)
+		if lab.IsFileExist(validCSV) {
+			log.Fatalf("Trying to save CSV with name %q. File existed. \n", validCSV)
+		}
+		err = saveData(validSet, validCSV)
+		if err != nil{
+			log.Fatalf("Save validCSV failed.\n")
+		}
+
+	default: // continue training
+		trainCSV := fmt.Sprintf("%s/train.csv", cfg.Evaluation.Params.SaveCheckpointDir)
+		trainSet, err = loadData(trainCSV)
+		if err != nil{
+			log.Fatalf("Load trainCSV failed.\n")
+		}
+		validCSV := fmt.Sprintf("%s/valid.csv", cfg.Evaluation.Params.SaveCheckpointDir)
+		validSet, err = loadData(validCSV)
+		if err != nil{
+			log.Fatalf("Load validCSV failed.\n")
+		}
 	}
 
-	// Save to csv files for continuous training
-	trainCSV := fmt.Sprintf("%s/train.csv", cfg.Evaluation.Params.SaveCheckpointDir)
-	err = saveData(trainSet, trainCSV)
-	if err != nil{
-		log.Fatalf("Save trainCSV failed.\n")
-	}
-	validCSV := fmt.Sprintf("%s/valid.csv", cfg.Evaluation.Params.SaveCheckpointDir)
-	err = saveData(validSet, validCSV)
-	if err != nil{
-		log.Fatalf("Save validCSV failed.\n")
-	}
 
 	// Log dataset summary
 	logger.Printf("Train Dataset:\n")
@@ -197,13 +216,14 @@ func trainClassification(cfg *lab.Config) {
 		Evaluator: evaluator,
 		Logger:    logger,
 		Verbosity: cfg.Train.Params.Verbosity,
-		Epochs:    cfg.Train.Params.Epochs,
+		CurrentEpoch: cfg.Train.StartEpoch,
+		Epochs:    cfg.Train.Params.Epochs + cfg.Train.StartEpoch,
 
 		LossTracker: lab.NewLossTracker(),
 		TimeTracker: lab.NewTimeTracker(),
 	}
 
 	// Now, time to train
-	fmt.Printf("Start training...\n")
+	fmt.Printf("Start training...From epoch: %d\n", cfg.Train.StartEpoch)
 	trainer.Train(cfg)
 }
