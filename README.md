@@ -16,5 +16,5 @@
 - [x] training configuration in yaml file
 
 
-This package is in progress and obviously there are many changes ahead.
+This package is in progress and obviously there are many changes ahead. Feel free to contribute. 
 
