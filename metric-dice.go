@@ -8,26 +8,26 @@ import (
 	ts "github.com/sugarme/gotch/tensor"
 )
 
-func softDiceScore(output, target *ts.Tensor, smoothVal float64, epsVal float64, dims []int64) (*ts.Tensor, error){
+func softDiceScore(output, target *ts.Tensor, smoothVal float64, epsVal float64, dims []int64) (*ts.Tensor, error) {
 	// Check size
-	if !reflect.DeepEqual(output.MustSize(), target.MustSize()){
+	if !reflect.DeepEqual(output.MustSize(), target.MustSize()) {
 		err := fmt.Errorf("softDiceScore - Expected output and target have the same shape. Got output %v and target %v\n", output.MustSize(), target.MustSize())
 		return nil, err
 	}
 
-	var(
+	var (
 		intersection *ts.Tensor
-		cardinality *ts.Tensor
+		cardinality  *ts.Tensor
 	)
 
 	dtype := target.DType()
 
 	// Intersection: yTrue x yPred = 0 if pred = 0 or mask = 0
 	// Cardinality: yTrue + yPred = 0 if BOTH pred = 0 and mask = 0
-	switch{
+	switch {
 	case dims != nil:
-		intersection = output.MustMul(target, false).MustSum1(dims, false, dtype, true)
-		cardinality = output.MustAdd(target, false).MustSum1(dims, false, dtype, true)
+		intersection = output.MustMul(target, false).MustSumDimIntlist(dims, false, dtype, true)
+		cardinality = output.MustAdd(target, false).MustSumDimIntlist(dims, false, dtype, true)
 	default:
 		intersection = output.MustMul(target, false).MustSum(dtype, true)
 		cardinality = output.MustAdd(target, false).MustSum(dtype, true)
@@ -37,8 +37,8 @@ func softDiceScore(output, target *ts.Tensor, smoothVal float64, epsVal float64,
 	eps := ts.FloatScalar(epsVal)
 
 	// dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
-	numerator := intersection.MustMul1(ts.FloatScalar(2), true).MustAdd1(smooth, true)
-	denominator := cardinality.MustAdd1(smooth, true).MustClampMin(eps, true)
+	numerator := intersection.MustMulScalar(ts.FloatScalar(2), true).MustAddScalar(smooth, true)
+	denominator := cardinality.MustAddScalar(smooth, true).MustClampMin(eps, true)
 
 	score := numerator.MustDiv(denominator, true)
 	denominator.MustDrop()
@@ -48,14 +48,13 @@ func softDiceScore(output, target *ts.Tensor, smoothVal float64, epsVal float64,
 	return score, nil
 }
 
-
 // DiceCoefficient measures the overlap between 2 masks - target and predict mask where
 // 1 is perfect overlap while 0 indicates non-overlap.
 //
 // Dice Coefficient = (2 x Intersection)/(Union + Intersection) = (2xTP)/(2xTP + FN + FP)
-func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
+func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64 {
 	// Check dim
-	if logits.MustSize()[0] != target.MustSize()[0]{
+	if logits.MustSize()[0] != target.MustSize()[0] {
 		err := fmt.Errorf("Expected same Dim 0 of inputs. Got %v and %v\n", logits.MustSize(), target.MustSize())
 		// return nil, err
 		log.Fatal(err)
@@ -63,19 +62,19 @@ func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
 
 	dtype := target.DType()
 	options := defaultMetricOptions()
-	for _, o := range opts{
+	for _, o := range opts {
 		o(options)
 	}
 
-	if options.Classes != nil && options.Mode == "BinaryMode"{
+	if options.Classes != nil && options.Mode == "BinaryMode" {
 		err := fmt.Errorf("JaccardLoss: Masking classes is not supported with 'BinaryMode'\n")
 		// return nil, err
 		log.Fatal(err)
 	}
 
 	var output *ts.Tensor
-	if options.FromLogits{
-		if options.Mode == "MultiClassMode"{
+	if options.FromLogits {
+		if options.Mode == "MultiClassMode" {
 			output = logits.MustLogSoftmax(1, dtype, false).MustExp(true)
 		} else {
 			// Apply activations to get [0..1] class probabilities
@@ -95,13 +94,13 @@ func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
 		yTrue *ts.Tensor
 		yPred *ts.Tensor
 	)
-	switch options.Mode{
+	switch options.Mode {
 	case "BinaryMode":
 		yTrue = target.MustView([]int64{bs, 1, -1}, false)
 		yPred = output.MustView([]int64{bs, 1, -1}, true)
 
 	case "MultiClassMode":
-    // y_true = y_true.view(bs, -1)
+		// y_true = y_true.view(bs, -1)
 		yT := target.MustView([]int64{bs, -1}, false)
 		// y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
 		// y_true = y_true.permute(0, 2, 1)  # N, C, H*W
@@ -117,7 +116,7 @@ func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
 
 	// scores shape = [classes] if `MultiClassMode` or `MultiLabelMode` or [1] if `BinaryMode`
 	scores, err := softDiceScore(yPred, yTrue, options.Smooth, options.Eps, dims)
-	if err != nil{
+	if err != nil {
 		// return nil, err
 		log.Fatal(err)
 	}
@@ -125,25 +124,24 @@ func DiceCoefficient(logits, target *ts.Tensor, opts ...MetricOption) float64{
 	yTrue.MustDrop()
 
 	coeff := scores.MustMean(dtype, true)
-	
+
 	retVal := coeff.Float64Values()[0]
 	coeff.MustDrop()
 
 	return retVal
 }
 
-
 // DiceCoefficientMetric
 type DiceCoefficientMetric struct{}
 
-func(m *DiceCoefficientMetric) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64{
+func (m *DiceCoefficientMetric) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
 	return DiceCoefficient(logits, target, opts...)
 }
 
-func (m *DiceCoefficientMetric) Name() string{
+func (m *DiceCoefficientMetric) Name() string {
 	return "dice_coefficient"
 }
 
-func NewDiceCoefficientMetric() Metric{
+func NewDiceCoefficientMetric() Metric {
 	return &DiceCoefficientMetric{}
 }

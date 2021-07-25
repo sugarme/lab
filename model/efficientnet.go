@@ -346,8 +346,8 @@ func efficientnet(p *nn.Path, params *params, nclasses int64) ts.ModuleT {
 		tmp6.MustDrop()
 		tmp8 := tmp7.MustAdaptiveAvgPool2d([]int64{1, 1}, false)
 		tmp7.MustDrop()
-		tmp9 := tmp8.MustSqueeze1(-1, true)
-		tmp10 := tmp9.MustSqueeze1(-1, true)
+		tmp9 := tmp8.MustSqueezeDim(-1, true)
+		tmp10 := tmp9.MustSqueezeDim(-1, true)
 
 		res := tmp10.ApplyT(classifier, train)
 		tmp10.MustDrop()
@@ -404,7 +404,7 @@ func EffNet(p *nn.Path, nclasses int64, backbone string, dOpt ...float64) ts.Mod
 		m = efficientnet(p, b4(dOpt...), nclasses)
 	case "efficientnet_b5", "tf_efficientnet_b5_ns":
 		m = efficientnet(p, b5(dOpt...), nclasses)
-	case "efficientnet_b6", "tf_efficientnet_b6_ns" :
+	case "efficientnet_b6", "tf_efficientnet_b6_ns":
 		m = efficientnet(p, b6(dOpt...), nclasses)
 	case "efficientnet_b7", "tf_efficientnet_b7_ns":
 		m = efficientnet(p, b7(dOpt...), nclasses)
