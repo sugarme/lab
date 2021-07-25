@@ -50,7 +50,7 @@ transform:
 model:
   name: ResNet
   params:
-    backbone: resnet34
+    backbone: resnet50
     pretrained: true
     pretrained_path: "pretrained"
     num_classes: 7
@@ -66,7 +66,7 @@ find_lr:
   save_dir: checkpoint/resnet34-find-lr
 
 train:
-  batch_size: 128
+  batch_size: 64
   trainer: Trainer
   load_previous:
   start_epoch: 0
@@ -81,10 +81,10 @@ train:
     cuda: true
 
 evaluation:
-  batch_size: 128
+  batch_size: 64
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/resnet34-1e6-repeat8
+    save_checkpoint_dir: checkpoint/resnet50-1e4
     save_best: true # replace previous best with new best model
     prefix: resnet
     metrics: [skin_accuracy]
@@ -100,7 +100,7 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 1.0e-6
+    lr: 1.0e-4
 
 scheduler:
   name: None

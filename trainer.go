@@ -414,6 +414,15 @@ func (t *Trainer) Train() {
 		}
 	} // for loop epoch
 
+	// save last-epoch weights for continuing training purpose
+	lastFile := fmt.Sprintf("%s/last-epoch.bin", t.Config.Evaluation.Params.SaveCheckpointDir)
+	err := t.Model.Weights.Save(lastFile)
+	if err != nil{
+		err = fmt.Errorf("Trainer.Train - Save last model failed: %w\n", err)
+		fmt.Print(err)
+	}
+
+
 	t.Logger.Println("TRAINING: END")
 	endMsg := fmt.Sprintf("Training took: %0.2fmins\n", time.Since(t.TimeTracker.StartTime).Minutes()) 
 	t.Logger.Printf(endMsg)
@@ -421,19 +430,19 @@ func (t *Trainer) Train() {
 	t.Logger.Close()
 
 	// Save losses to csv
-	tlossFile := fmt.Sprintf("%s/train-loss-%d.csv", cfg.Evaluation.Params.SaveCheckpointDir, cfg.Train.TrainCount)
-	err := t.LossTracker.SaveLossesToCSV(tlossFile)
+	tlossFile := fmt.Sprintf("%s/train-loss-%d.csv", t.Config.Evaluation.Params.SaveCheckpointDir, t.Config.Train.TrainCount)
+	err = t.LossTracker.SaveLossesToCSV(tlossFile)
 	if err != nil{
 		fmt.Print(err)
 	}
-	vlossFile := fmt.Sprintf("%s/valid-loss-%d.csv", cfg.Evaluation.Params.SaveCheckpointDir, cfg.Train.TrainCount)
+	vlossFile := fmt.Sprintf("%s/valid-loss-%d.csv", t.Config.Evaluation.Params.SaveCheckpointDir, t.Config.Train.TrainCount)
 	t.LossTracker.SaveValidLossesToCSV(vlossFile)
 	if err != nil{
 		fmt.Print(err)
 	}
 
 	// Plot train and valid losses and save to a png file.
-	gFile := fmt.Sprintf("%s/loss-%d.png", cfg.Evaluation.Params.SaveCheckpointDir, cfg.Train.TrainCount)
+	gFile := fmt.Sprintf("%s/loss-%d.png", t.Config.Evaluation.Params.SaveCheckpointDir, t.Config.Train.TrainCount)
 	err = t.makeLossGraph(gFile)
 	if err != nil{
 		fmt.Print(err)

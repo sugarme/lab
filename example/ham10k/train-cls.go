@@ -128,24 +128,24 @@ func trainClassification(cfg *lab.Config) {
 
 	// Data Balancing and Loss function:
 	// =================================
-	/*
-	var criterion lab.LossFunc
-	switch dataBalancing{
-	case true:
-		criterion, err = b.BuildLoss()
-		if err != nil {
-			err = fmt.Errorf("Building loss function failed: %w", err)
-			log.Fatal(err)
-		}
-		logger.Printf("Data balancing using upsampling...")
-		logger.Printf("Using LossFunc %q...\n", cfg.Loss.Name)
-	case false:
-		classWeights := classWeights(trainSet, classes)
-		criterion = CustomCrossEntropyLoss(WithLossFnWeights(classWeights))
-		logger.Printf("Data balancing using custom CrossEntropyLoss with class weights.\n")
-		logger.Printf("class weights: %0.4f\n", classWeights)
-	}
-	*/
+/* 
+ *   var criterion lab.LossFunc
+ *   switch dataBalancing{
+ *   case true:
+ *     criterion, err = b.BuildLoss()
+ *     if err != nil {
+ *       err = fmt.Errorf("Building loss function failed: %w", err)
+ *       log.Fatal(err)
+ *     }
+ *     logger.Printf("Data balancing using upsampling...")
+ *     logger.Printf("Using LossFunc %q...\n", cfg.Loss.Name)
+ *   case false:
+ *     classWeights := classWeights(trainSet, classes)
+ *     criterion = CustomCrossEntropyLoss(WithLossFnWeights(classWeights))
+ *     logger.Printf("Data balancing using custom CrossEntropyLoss with class weights.\n")
+ *     logger.Printf("class weights: %0.4f\n", classWeights)
+ *   }
+ *  */
 
 	// Ref. https://github.com/skrantidatta/Attention-based-Skin-Cancer-Classification/blob/main/Ham10000%20models/Model%20without%20Soft%20Attention/ResNet34.ipynb
 	classWeights := []float64{
