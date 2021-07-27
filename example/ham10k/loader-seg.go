@@ -179,7 +179,7 @@ func (m *HamDataset) Item(idx int) (interface{}, error) {
 	}
 	imgTs0.MustDrop()
 
-	imgTs1 := img.MustDiv1(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
+	imgTs1 := img.MustDivScalar(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
 
 	// mask
 	maskGray, err := rgb2GrayScale(maskTs)
@@ -187,7 +187,7 @@ func (m *HamDataset) Item(idx int) (interface{}, error) {
 		return nil, err
 	}
 	maskTs.MustDrop()
-	maskTs1 := maskGray.MustDiv1(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
+	maskTs1 := maskGray.MustDivScalar(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
 
 	return []ts.Tensor{*imgTs1, *maskTs1}, nil
 }
@@ -307,9 +307,9 @@ func rgb2GrayScale(x *ts.Tensor) (*ts.Tensor, error) {
 	}
 
 	channels := x.MustUnbind(-3, false)
-	r := channels[0].MustMul1(ts.FloatScalar(0.2989), true)
-	g := channels[1].MustMul1(ts.FloatScalar(0.587), true)
-	b := channels[2].MustMul1(ts.FloatScalar(0.114), true)
+	r := channels[0].MustMulScalar(ts.FloatScalar(0.2989), true)
+	g := channels[1].MustMulScalar(ts.FloatScalar(0.587), true)
+	b := channels[2].MustMulScalar(ts.FloatScalar(0.114), true)
 
 	rg := r.MustAdd(g, true)
 	g.MustDrop()

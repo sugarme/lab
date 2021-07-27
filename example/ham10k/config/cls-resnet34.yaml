@@ -68,12 +68,12 @@ find_lr:
 train:
   batch_size: 128
   trainer: Trainer
-  load_previous:
+  load_previous: 
   start_epoch: 0
   train_count: 1 # For naming file purpose
   params:
     gradient_accumulation: 1
-    num_epochs: 60
+    num_epochs: 300
     steps_per_epoch: 0
     validate_interval: 1
     verbosity: 100
@@ -84,7 +84,7 @@ evaluation:
   batch_size: 128
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/resnet34-1e6-repeat8
+    save_checkpoint_dir: checkpoint/resnet34-1e6
     save_best: true # replace previous best with new best model
     prefix: resnet
     metrics: [skin_accuracy]

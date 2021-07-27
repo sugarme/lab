@@ -31,7 +31,7 @@ func(m *SkinAccuracy) Calculate(logits, target *ts.Tensor, opts ...lab.MetricOpt
 	// fmt.Printf("pred: %v\n", pred.Float64Values())
 	// fmt.Printf("eq: %v\n", pred.MustEq1(target, false).Float64Values())
 
-	sumTs := pred.MustEq1(target, true).MustSum(gotch.Float, true)
+	sumTs := pred.MustEqTensor(target, true).MustSum(gotch.Float, true)
 	sum := sumTs.Float64Values()[0]
 	sumTs.MustDrop()
 	n := yTrueDims[0]

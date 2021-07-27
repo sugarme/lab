@@ -83,7 +83,7 @@ func (m *SkinDataset) Item(idx int) (interface{}, error) {
 	}
 	imgTs0.MustDrop()
 
-	imgTs1 := img.MustDiv1(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
+	imgTs1 := img.MustDivScalar(ts.FloatScalar(255.0), true).MustTotype(gotch.Float, true)
 	labelTs := ts.MustOfSlice([]int64{sample.Label}).MustTotype(gotch.Int64, true)
 
 	return []ts.Tensor{*imgTs1, *labelTs}, nil
