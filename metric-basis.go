@@ -1,7 +1,12 @@
 package lab
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/pa-m/sklearn/metrics"
+	"github.com/sugarme/gotch"
+	ts "github.com/sugarme/gotch/tensor"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -63,3 +68,58 @@ func AUC(yTrueVals []float64, yScoreVals []float64, posLabel float64) float64{
 
 	return metrics.AUC(fpr, tpr)
 }
+
+
+type AccuracyMeter struct{}
+
+// Calculate implements metric interface. 
+// 
+// logits shape: [batch_size, n_classes]
+// target shape: [batch_size] 
+func(m *AccuracyMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64{
+	yTrueDims := target.MustSize()
+	yPredDims := logits.MustSize()
+
+	if yTrueDims[0] != yPredDims[0]{
+		err := fmt.Errorf("Expected dim 0 of logits and target equal. Got logits %+v - target %+v", yPredDims, yTrueDims)
+		log.Fatal(err)
+	}
+
+	pred := logits.MustArgmax([]int64{1}, false, false)
+	sumTs := pred.MustEqTensor(target, true).MustSum(gotch.Float, true)
+	sum := sumTs.Float64Values()[0]
+	sumTs.MustDrop()
+	n := yTrueDims[0]
+	avg := sum/float64(n)
+
+	return avg
+}
+
+func(m *AccuracyMeter) Name() string{
+	return "skin_accuracy"
+}
+
+func NewAccuracyMeter() Metric{
+	return &AccuracyMeter{}
+}
+
+
+type LossMeter struct{
+	lossFunc LossFunc
+}
+
+func(m *LossMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64{
+	lossTs := m.lossFunc(logits, target)
+	loss := lossTs.Float64Values()[0]
+	lossTs.MustDrop()
+	return loss
+}
+
+func(m *LossMeter) Name() string{
+	return "valid_loss"
+}
+
+func NewLossMeter(lossFunc LossFunc) Metric{
+	return &LossMeter{lossFunc}
+}
+
