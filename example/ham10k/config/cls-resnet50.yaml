@@ -51,7 +51,7 @@ model:
   name: ResNet
   params:
     backbone: resnet50
-    pretrained: true
+    pretrained: false
     pretrained_path: "pretrained"
     num_classes: 7
     dropout: 0.2
@@ -63,17 +63,17 @@ find_lr:
   num_iter: 500
   save_fig: true
   diverge_threshold: 100
-  save_dir: checkpoint/resnet34-find-lr
+  save_dir: checkpoint/resnet50-find-lr
 
 train:
-  batch_size: 64
+  batch_size: 16
   trainer: Trainer
-  load_previous:
+  load_previous: 
   start_epoch: 0
   train_count: 1 # For naming file purpose
   params:
     gradient_accumulation: 1
-    num_epochs: 60
+    num_epochs: 300
     steps_per_epoch: 0
     validate_interval: 1
     verbosity: 100
@@ -81,10 +81,10 @@ train:
     cuda: true
 
 evaluation:
-  batch_size: 64
+  batch_size: 16
   evaluator: Evaluator
   params:
-    save_checkpoint_dir: checkpoint/resnet50-1e4
+    save_checkpoint_dir: checkpoint/resnet50-1e6
     save_best: true # replace previous best with new best model
     prefix: resnet
     metrics: [skin_accuracy]
@@ -100,7 +100,7 @@ loss:
 optimizer:
   name: Adam
   params:
-    lr: 1.0e-4
+    lr: 1.0e-6
 
 scheduler:
   name: None

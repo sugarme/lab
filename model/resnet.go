@@ -165,6 +165,7 @@ type bottleneckBlock struct{
 
 // ForwardT implements ModuleT for bottleneckBlock.
 func(b *bottleneckBlock) ForwardT(xs *ts.Tensor, train bool) *ts.Tensor{
+	/*
 		c1 := xs.Apply(b.Conv1)
 		bn1 := c1.ApplyT(b.Bn1, train)
 		c1.MustDrop()
@@ -182,7 +183,30 @@ func(b *bottleneckBlock) ForwardT(xs *ts.Tensor, train bool) *ts.Tensor{
 		bn3.MustDrop()
 		res := add.MustRelu(true)
 		return res
+		*/
+
+		c1 := b.Conv1.ForwardT(xs, train)
+		bn1 := b.Bn1.ForwardT(c1, train)
+		c1.MustDrop()
+		relu1 := bn1.MustRelu(true)
+		c2 := b.Conv2.ForwardT(relu1, train)
+		relu1.MustDrop()
+		bn2 := b.Bn2.ForwardT(c2, train)
+		c2.MustDrop()
+		relu2 := bn2.MustRelu(true)
+		c3 := b.Conv3.ForwardT(relu2, train)
+		relu2.MustDrop()
+		bn3 := b.Bn3.ForwardT(c3, train)
+		c3.MustDrop()
+
+		dsl := b.Downsample.ForwardT(xs, train)
+		add := dsl.MustAdd(bn3, true)
+		bn3.MustDrop()
+		res := add.MustRelu(true)
+
+		return res
 }
+
 
 // Bottleneck versions for ResNet 50, 101, and 152.
 func newBottleneckBlock(path *nn.Path, cIn, cOut, stride, e int64) *bottleneckBlock {
