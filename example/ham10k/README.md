@@ -34,7 +34,7 @@ Image segmentation using the following configuration:
 
 ```bash
 # Training
-go run . -task=segment-train -config=config-segmentation.yaml -full=true
+go run . -task=train-seg -config=config/seg-unet-resnet34.yaml
 
 # Inferring
 go run . -task=segment-infer -file="FULL_PATH_TO_IMAGE_FILE" -model="MODEL_FILE" -create-mask=true
@@ -51,6 +51,32 @@ Dice Coefficient is ~ 89.76%
 
 ## Classification
 
-To be updated.
+Image classification using the following configuration:
+- Model: ResNet34, ResNet50, DenseNet101, or EfficientNetB6
+- Pre-trained weights: on ImageNet dataset
+- Batch size: 16
+- Input image size: 224 x 224 pixels
+- Epochs: 100
+- Loss function: CrossEntropyLoss with classweight = 5.0 for melanoma
+- Valid metric: valid loss
+- Optimizer: Adam
+- Initial LR: 1.0e-6
+- Train/Valid split: valid set is 20% of unique sample IDs.
+- Augmentation: data shuffling. Image resize 224, random vflip, hflip, rotate (see configuration file).
+
+```bash
+# Training
+go run . -task=train-cls -config=config/cls-effnetB6.yaml
+
+```
+
+**Result**
+
+Accuracy > 80%
+
+**train/valid losses**
+
+![Train Valid Loss Graph](loss-cls.png)
+
 
 
