@@ -13,7 +13,20 @@ func MakeTransformer(cfg TransformConfig) (aug.Transformer, error){
 	if cfg.IsTransformer{
 		switch cfg.TransformerName{
 		case "RandomAugment":
-			return NewRandomAugment()
+				var doNormalize bool
+				for _, augOpt := range cfg.AugmentOpts{
+								if augOpt.Name == "Normalize"{
+												doNormalize = true
+												break
+								}
+				}
+				if doNormalize{
+								fmt.Println("Using RandomAugment with Normalize")
+								return NewRandomAugment()
+				}
+
+				fmt.Println("Using RandomAugment WITHOUT Normalize")
+				return NewRandomAugment(WithNormalize(false))
 
 		default:
 			err := fmt.Errorf("makeTransformer failed: unsupported TransformerName %q\n", cfg.TransformerName)
