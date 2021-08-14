@@ -1,1 +1,2 @@
-Checkpoints, log files will be saved here
+
+Checkpoint will be here.
