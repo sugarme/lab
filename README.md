@@ -14,7 +14,7 @@
 - [x] loss tracker
 - [x] logger 
 - [x] training configuration in yaml file
-
+- [x] metrics for segmentation and classification tasks
 
 This package is in progress and obviously there are many changes ahead. Feel free to contribute. 
 

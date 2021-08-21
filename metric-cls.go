@@ -8,85 +8,6 @@ import (
 	ts "github.com/sugarme/gotch/tensor"
 )
 
-// ClassificationMetrics returns precision, recall, f1-score.
-// logits shape: [batch_size, n_classes]
-// target shape: [batch_size]
-// Ref.
-// 1. https://gist.github.com/SuperShinyEyes/dcc68a08ff8b615442e3bc6a9b55a354
-// 2. https://www.kaggle.com/guglielmocamporese/macro-f1-score-keras
-func ClassificationMetrics(logits, target *ts.Tensor, nclasses int64) (precisionVal, recallVal, f1Val, accuracyVal float64, err error) {
-	yTrueDims := target.MustSize()
-	yPredDims := logits.MustSize()
-
-	if yTrueDims[0] != yPredDims[0] {
-		err = fmt.Errorf("Expected dim 0 of logits and target equal. Got logits %+v - target %+v", yPredDims, yTrueDims)
-		return -1, -1, -1, -1, err
-	}
-
-	yTrue, yPred, err := YtrueYpred(logits, target, nclasses)
-	if err != nil {
-		return -1, -1, -1, -1, err
-	}
-
-	dtype := gotch.Float
-	device := target.MustDevice()
-	oneTs := ts.MustOnes([]int64{1}, dtype, device).MustTo(device, true)
-	epsilon := ts.MustOfSlice([]float64{1e-7}).MustTotype(dtype, true).MustTo(device, true)
-	// 1 - yTrue
-	yTrue1 := oneTs.MustSub(yTrue, false)
-	// 1 - yPred
-	yPred1 := oneTs.MustSub(yPred, false)
-
-	tp := yTrue.MustMul(yPred, false).MustSum(dtype, true)
-	tn := yTrue1.MustMul(yPred1, false).MustSum(dtype, true)
-	fp := yTrue1.MustMul(yPred, false).MustSum(dtype, true)
-	fn := yTrue.MustMul(yPred1, false).MustSum(dtype, true)
-
-	fmt.Printf("TP: %v\n", tp.Int64Values()[0])
-	fmt.Printf("TN: %v\n", tn.Int64Values()[0])
-	fmt.Printf("FP: %v\n", fp.Int64Values()[0])
-	fmt.Printf("FN: %v\n", fn.Int64Values()[0])
-
-	// Precision = TP/(TP + FP)
-	precisionDiv := tp.MustAdd(fp, false).MustAdd(epsilon, true)
-	precision := tp.MustDiv(precisionDiv, false)
-	precisionDiv.MustDrop()
-	precisionVal = precision.Float64Values()[0]
-
-	// Recall = TP/(TP + FN)
-	recallDiv := tp.MustAdd(fn, false).MustAdd(epsilon, true)
-	recall := tp.MustDiv(recallDiv, false)
-	recallVal = recall.Float64Values()[0]
-
-	// F1 = 2 x (Precision x Recall)/(Precision + Recall)
-	f1Div := precision.MustAdd(recall, false).MustAdd(epsilon, true)
-	f1 := precision.MustMul(recall, false).MustMulScalar(ts.FloatScalar(2), true).MustDiv(f1Div, true)
-	f1Val = f1.Float64Values()[0]
-
-	// Accuracy = (TP + TN)/(P + N) = (TP + TN)/(TP + TN + FP + FN)
-	accuracyDiv := tp.MustAdd(tn, false).MustAdd(fp, true).MustAdd(fn, true)
-	accuracy := tp.MustAdd(tn, false).MustDiv(accuracyDiv, true)
-	accuracyDiv.MustDrop()
-	accuracyVal = accuracy.Float64Values()[0]
-
-	// Delete intermediate tensors
-	yPred.MustDrop()
-	yTrue.MustDrop()
-	oneTs.MustDrop()
-	epsilon.MustDrop()
-	yTrue1.MustDrop()
-	yPred1.MustDrop()
-	tp.MustDrop()
-	fp.MustDrop()
-	fn.MustDrop()
-	precision.MustDrop()
-	recall.MustDrop()
-	f1.MustDrop()
-	accuracy.MustDrop()
-
-	return precisionVal, recallVal, f1Val, accuracyVal, nil
-}
-
 // MatIndex index 2D tensor.
 func MatIndex(mat *ts.Tensor, index []int) (*ts.Tensor, error) {
 	y := int64(index[0])
@@ -108,181 +29,6 @@ func MatIndex(mat *ts.Tensor, index []int) (*ts.Tensor, error) {
 	selY := mat.MustSelect(0, y, false)
 	selXY := selY.MustNarrow(0, x, 1, true)
 	return selXY, nil
-}
-
-// convert logits and target tensors to 2D one-hot tensors.
-//
-// Outputs will have shape: [batch size, number of classes]
-func YtrueYpred(logits, target *ts.Tensor, nclasses int64) (*ts.Tensor, *ts.Tensor, error) {
-	dtype := gotch.Int64
-	device := target.MustDevice()
-	bsize := target.MustSize()[0]
-
-	tvals := target.Int64Values()
-	var pred *ts.Tensor
-	if len(logits.MustSize()) == 2 {
-		pred = logits.MustArgmax([]int64{1}, false, false)
-	} else {
-		pred = logits.MustShallowClone()
-	}
-	pvals := pred.Int64Values()
-	pred.MustDrop()
-
-	yTrue := ts.MustZeros([]int64{bsize, nclasses}, dtype, device)
-	yPred := ts.MustZeros([]int64{bsize, nclasses}, dtype, device)
-	oneTs := ts.MustOnes([]int64{1}, dtype, device)
-
-	for i, idx := range tvals {
-		view, err := MatIndex(yTrue, []int{i, int(idx)})
-		if err != nil {
-			return nil, nil, err
-		}
-		view.Copy_(oneTs)
-		view.MustDrop()
-	}
-
-	for i, idx := range pvals {
-		view, err := MatIndex(yPred, []int{i, int(idx)})
-		if err != nil {
-			return nil, nil, err
-		}
-		view.Copy_(oneTs)
-		view.MustDrop()
-	}
-
-	oneTs.MustDrop()
-
-	return yTrue, yPred, nil
-}
-
-// Precision:
-// ==========
-
-type PrecisionMeter struct {
-	Classes int64 // number of classes
-}
-
-func NewPrecisionMeter(n int) Metric {
-	return &PrecisionMeter{
-		Classes: int64(n),
-	}
-}
-
-// Calculate implements Metric interface.
-func (m *PrecisionMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
-	precision, _, _, _, err := ClassificationMetrics(logits, target, m.Classes)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return precision
-}
-
-func (m *PrecisionMeter) Name() string {
-	return "precision"
-}
-
-// Recall (Sensivity):
-// ===================
-
-type RecallMeter struct {
-	Classes int64 // number of classes
-}
-
-func NewRecallMeter(n int) Metric {
-	return &RecallMeter{
-		Classes: int64(n),
-	}
-}
-
-// Calculate implements Metric interface.
-func (m *RecallMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
-	_, recall, _, _, err := ClassificationMetrics(logits, target, m.Classes)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return recall
-}
-
-func (m *RecallMeter) Name() string {
-	return "recall"
-}
-
-// F1-Score:
-// =========
-
-type F1Meter struct {
-	Classes int64 // number of classes
-}
-
-func NewF1Meter(n int) Metric {
-	return &F1Meter{
-		Classes: int64(n),
-	}
-}
-
-// Calculate implements Metric interface.
-func (m *F1Meter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
-	_, _, f1, _, err := ClassificationMetrics(logits, target, m.Classes)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return f1
-}
-
-func (m *F1Meter) Name() string {
-	return "f1"
-}
-
-// Accuracy:
-// =========
-
-type AccuracyMeter struct {
-	Classes int64 // number of classes
-}
-
-func NewAccuracyMeter(n int) Metric {
-	return &AccuracyMeter{
-		Classes: int64(n),
-	}
-}
-
-// Calculate implements Metric interface.
-func (m *AccuracyMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
-	_, _, _, accuracy, err := ClassificationMetrics(logits, target, m.Classes)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return accuracy
-}
-
-func (m *AccuracyMeter) Name() string {
-	return "accuracy"
-}
-
-// Loss:
-// =====
-
-type LossMeter struct {
-	lossFunc LossFunc
-}
-
-func NewLossMeter(lossFunc LossFunc) Metric {
-	return &LossMeter{lossFunc}
-}
-
-func (m *LossMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
-	lossTs := m.lossFunc(logits, target)
-	loss := lossTs.Float64Values()[0]
-	lossTs.MustDrop()
-	return loss
-}
-
-func (m *LossMeter) Name() string {
-	return "valid_loss"
 }
 
 // ConfusionMatrix generates confusion matrix with colums are ground truth and rows are prediction.
@@ -347,9 +93,25 @@ type MultiClassMeter struct {
 	Matrix     *ts.Tensor // Confusion matrix
 	NumClasses int64      // number of classes
 	Eps        float64
+
+	// metrics for each class
+	precisions []float64
+	recalls    []float64
+	f1s        []float64
+
+	// average metrics
+	accuracy          float64
+	macroPrecision    float64
+	macroRecall       float64
+	macroF1           float64
+	weightedPrecision float64
+	weightedRecall    float64
+	weightedF1        float64
 }
 
 // NewMultiClassMeter creates MultiClassMeter.
+// -yTrue is 1D tensor  of int64 class id of ground truth
+// -yPred is 1D tensor of int64 class id of prediction
 func NewMultiClassMeter(yTrue, yPred *ts.Tensor, nclasses int64, epsOpt ...float64) (*MultiClassMeter, error) {
 	eps := 1e-7
 	if len(epsOpt) > 0 && epsOpt[0] < 1 {
@@ -361,15 +123,35 @@ func NewMultiClassMeter(yTrue, yPred *ts.Tensor, nclasses int64, epsOpt ...float
 		return nil, err
 	}
 
-	return &MultiClassMeter{
+	meter := &MultiClassMeter{
 		Matrix:     m,
 		NumClasses: nclasses,
 		Eps:        eps,
-	}, nil
+		precisions: nil,
+		recalls:    nil,
+		f1s:        nil,
+
+		accuracy:          -1,
+		macroPrecision:    -1,
+		macroRecall:       -1,
+		macroF1:           -1,
+		weightedPrecision: -1,
+		weightedRecall:    -1,
+		weightedF1:        -1,
+	}
+
+	// calculate all metrics.
+	err = meter.calculate()
+	if err != nil {
+		err = fmt.Errorf("NewMultiClassMeter - calculate metrics failed: %w\n", err)
+		return nil, err
+	}
+
+	return meter, nil
 }
 
-// PrintStats prints out classification metrics.
-func (m *MultiClassMeter) PrintStats() error {
+// calculate calculates all classification metrics.
+func (m *MultiClassMeter) calculate() error {
 	diagTs := m.Matrix.MustDiag(0, false)
 	diag := diagTs.Float64Values()
 	diagTs.MustDrop()
@@ -422,19 +204,42 @@ func (m *MultiClassMeter) PrintStats() error {
 	fp := sumAll - tp
 	accuracy := tp / (tp + fp)
 
+	m.precisions = precisions
+	m.recalls = recalls
+	m.f1s = f1s
+	m.accuracy = accuracy
+	m.macroPrecision = macroPrecision
+	m.macroRecall = macroRecall
+	m.macroF1 = macroF1
+	m.weightedPrecision = weightedPrecision
+	m.weightedRecall = weightedRecall
+	m.weightedF1 = weightedF1
+
+	return nil
+}
+
+// PrintStats prints out classification metrics.
+func (m *MultiClassMeter) PrintStats() error {
+	sum0 := m.Matrix.MustSumDimIntlist([]int64{0}, false, gotch.Int64, false)
+	sumCol := sum0.Float64Values()
+	sum0.MustDrop()
+	sum1 := m.Matrix.MustSumDimIntlist([]int64{1}, false, gotch.Int64, false)
+	sumRow := sum1.Float64Values()
+	sum1.MustDrop()
+
 	// Header
 	fmt.Printf("%20s %10s %10s %10s %10s\n", "", "precision", "recall", "f1-score", "support")
 	// For individual classes
 	for i := 0; i < int(m.NumClasses); i++ {
-		fmt.Printf("%20d %10.3f %10.3f %10.3f %10d\n", i, precisions[i], recalls[i], f1s[i], int(sumRow[i]))
+		fmt.Printf("%20d %10.3f %10.3f %10.3f %10d\n", i, m.precisions[i], m.recalls[i], m.f1s[i], int(sumRow[i]))
 	}
 
 	// Overall
 	total := sumFloat64(sumCol)
 	fmt.Println()
-	fmt.Printf("%20s %10s %10s %10.3f %10.0f\n", "accuracy", "", "", accuracy, total)
-	fmt.Printf("%20s %10.3f %10.3f %10.3f %10.0f\n", "macro avg", macroPrecision, macroRecall, macroF1, total)
-	fmt.Printf("%20s %10.3f %10.3f %10.3f %10.0f\n", "weighted avg", weightedPrecision, weightedRecall, weightedF1, total)
+	fmt.Printf("%20s %10s %10s %10.3f %10.0f\n", "accuracy", "", "", m.accuracy, total)
+	fmt.Printf("%20s %10.3f %10.3f %10.3f %10.0f\n", "macro avg", m.macroPrecision, m.macroRecall, m.macroF1, total)
+	fmt.Printf("%20s %10.3f %10.3f %10.3f %10.0f\n", "weighted avg", m.weightedPrecision, m.weightedRecall, m.weightedF1, total)
 
 	return nil
 }
@@ -460,4 +265,257 @@ func weightedMetric(vals []float64, counts []float64) (float64, error) {
 	}
 
 	return sum / sumFloat64(counts), nil
+}
+
+// ConfusionMatrix prints out confusion matrix.
+func (m *MultiClassMeter) ConfusionMatrix() {
+	mat := m.Matrix
+
+	// Header
+	header := fmt.Sprintf("%20s ", "")
+	for i := 0; i < int(m.NumClasses); i++ {
+		hcell := fmt.Sprintf("%10d ", i)
+		header = header + hcell
+	}
+
+	// Sum
+	hSum := fmt.Sprintf("%10s", "total")
+	header = header + hSum
+	fmt.Println(header)
+	fmt.Println()
+
+	// Body
+	for i := 0; i < int(m.NumClasses); i++ {
+		row := mat.MustSelect(0, int64(i), false)
+		rowVals := row.Int64Values()
+		row.MustDrop()
+		printRow(fmt.Sprintf("%v", i), rowVals)
+	}
+
+	colSumsTs := mat.MustSumDimIntlist([]int64{0}, false, gotch.Int64, false)
+	colSums := colSumsTs.Int64Values()
+	colSumsTs.MustDrop()
+
+	// Footer
+	fmt.Println()
+	printRow("total", colSums)
+}
+
+func printRow(rname string, vals []int64) {
+	var total int64
+	row := fmt.Sprintf("%20s ", rname)
+	for i := 0; i < len(vals); i++ {
+		hcell := fmt.Sprintf("%10d ", vals[i])
+		row = row + hcell
+		total += vals[i]
+	}
+
+	sum := fmt.Sprintf("%10d", total)
+	row = row + sum
+
+	fmt.Println(row)
+}
+
+// Precision:
+// ==========
+
+type PrecisionMeter struct {
+	Classes int64 // number of classes
+}
+
+func NewPrecisionMeter(n int) Metric {
+	return &PrecisionMeter{
+		Classes: int64(n),
+	}
+}
+
+// Calculate implements Metric interface.
+func (m *PrecisionMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
+
+	options := defaultMetricOptions()
+	for _, o := range opts {
+		o(options)
+	}
+
+	meter, err := NewMultiClassMeter(target, logits, m.Classes)
+	if err != nil {
+		err = fmt.Errorf("PrecisionMeter - Calculate metrics failed: %w\n", err)
+		log.Fatal(err)
+	}
+
+	var retVal float64
+	switch options.AverageMode {
+	case "micro":
+		retVal = meter.accuracy
+	case "macro":
+		retVal = meter.macroPrecision
+	case "weighted":
+		retVal = meter.weightedPrecision
+	default:
+		retVal = meter.macroPrecision
+	}
+
+	// Delete tensor
+	meter.Matrix.MustDrop()
+	meter = nil
+
+	return retVal
+}
+
+func (m *PrecisionMeter) Name() string {
+	return "precision"
+}
+
+// Recall (Sensivity):
+// ===================
+
+type RecallMeter struct {
+	Classes int64 // number of classes
+}
+
+func NewRecallMeter(n int) Metric {
+	return &RecallMeter{
+		Classes: int64(n),
+	}
+}
+
+// Calculate implements Metric interface.
+func (m *RecallMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
+
+	options := defaultMetricOptions()
+	for _, o := range opts {
+		o(options)
+	}
+
+	meter, err := NewMultiClassMeter(target, logits, m.Classes)
+	if err != nil {
+		err = fmt.Errorf("PrecisionMeter - Calculate metrics failed: %w\n", err)
+		log.Fatal(err)
+	}
+
+	var retVal float64
+	switch options.AverageMode {
+	case "micro":
+		retVal = meter.accuracy
+	case "macro":
+		retVal = meter.macroRecall
+	case "weighted":
+		retVal = meter.weightedRecall
+	default:
+		retVal = meter.macroRecall
+	}
+
+	// Delete tensor
+	meter.Matrix.MustDrop()
+	meter = nil
+
+	return retVal
+}
+
+func (m *RecallMeter) Name() string {
+	return "recall"
+}
+
+// F1-Score:
+// =========
+
+type F1Meter struct {
+	Classes int64 // number of classes
+}
+
+func NewF1Meter(n int) Metric {
+	return &F1Meter{
+		Classes: int64(n),
+	}
+}
+
+// Calculate implements Metric interface.
+func (m *F1Meter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
+	options := defaultMetricOptions()
+	for _, o := range opts {
+		o(options)
+	}
+
+	meter, err := NewMultiClassMeter(target, logits, m.Classes)
+	if err != nil {
+		err = fmt.Errorf("PrecisionMeter - Calculate metrics failed: %w\n", err)
+		log.Fatal(err)
+	}
+
+	var retVal float64
+	switch options.AverageMode {
+	case "micro":
+		retVal = meter.accuracy
+	case "macro":
+		retVal = meter.macroF1
+	case "weighted":
+		retVal = meter.weightedF1
+	default:
+		retVal = meter.macroF1
+	}
+
+	// Delete tensor
+	meter.Matrix.MustDrop()
+	meter = nil
+
+	return retVal
+}
+
+func (m *F1Meter) Name() string {
+	return "f1"
+}
+
+// Accuracy:
+// =========
+
+type AccuracyMeter struct {
+	Classes int64 // number of classes
+}
+
+func NewAccuracyMeter(n int) Metric {
+	return &AccuracyMeter{
+		Classes: int64(n),
+	}
+}
+
+// Calculate implements Metric interface.
+func (m *AccuracyMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
+	meter, err := NewMultiClassMeter(target, logits, m.Classes)
+	if err != nil {
+		err = fmt.Errorf("PrecisionMeter - Calculate metrics failed: %w\n", err)
+		log.Fatal(err)
+	}
+
+	// Delete tensor
+	retVal := meter.accuracy
+	meter.Matrix.MustDrop()
+	meter = nil
+
+	return retVal
+}
+
+func (m *AccuracyMeter) Name() string {
+	return "accuracy"
+}
+
+// Loss:
+// =====
+
+type LossMeter struct {
+	lossFunc LossFunc
+}
+
+func NewLossMeter(lossFunc LossFunc) Metric {
+	return &LossMeter{lossFunc}
+}
+
+func (m *LossMeter) Calculate(logits, target *ts.Tensor, opts ...MetricOption) float64 {
+	lossTs := m.lossFunc(logits, target)
+	loss := lossTs.Float64Values()[0]
+	lossTs.MustDrop()
+	return loss
+}
+
+func (m *LossMeter) Name() string {
+	return "valid_loss"
 }
