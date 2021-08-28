@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,12 +11,6 @@ import (
 	"github.com/sugarme/gotch/dutil"
 	"github.com/sugarme/gotch/nn"
 	ts "github.com/sugarme/gotch/tensor"
-
-	"gonum.org/v1/gonum/stat"
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/plotutil"
-	"gonum.org/v1/plot/vg"
 )
 
 type TimeTracker struct {
@@ -368,7 +361,7 @@ func (t *Trainer) Train() {
 		} // for loop step
 
 		// Log average epoch loss
-		epochLoss := stat.Mean(epochLosses, nil)
+		epochLoss := Mean(epochLosses)
 		t.Logger.Printf("Epoch %2d/%d\t\tAvg. Loss %3.4f\n", t.CurrentEpoch+1, t.Epochs+t.OffsetEpochs, epochLoss)
 
 		// Validation
@@ -441,12 +434,12 @@ func (t *Trainer) Train() {
 		fmt.Print(err)
 	}
 
-	// Plot train and valid losses and save to a png file.
-	gFile := fmt.Sprintf("%s/loss-%d.png", t.Config.Evaluation.Params.SaveCheckpointDir, t.Config.Train.TrainCount)
-	err = t.makeLossGraph(gFile)
-	if err != nil {
-		fmt.Print(err)
-	}
+	// // Plot train and valid losses and save to a png file.
+	// gFile := fmt.Sprintf("%s/loss-%d.png", t.Config.Evaluation.Params.SaveCheckpointDir, t.Config.Train.TrainCount)
+	// err = t.makeLossGraph(gFile)
+	// if err != nil {
+	// fmt.Print(err)
+	// }
 }
 
 func (t *Trainer) SchedulerStep() {
@@ -483,6 +476,8 @@ func (t *Trainer) PrintProgress() {
 	t.Logger.Print(msg)
 	t.Logger.SendSlack(msg)
 }
+
+/*
 
 func (t *Trainer) makeLossGraph(filePath string) error {
 	// train points
@@ -529,6 +524,8 @@ func (t *Trainer) makeLossGraph(filePath string) error {
 	return nil
 }
 
+*/
+
 func lossByEpoch(data []LossItem) []float64 {
 	currEpoch := 0
 	var epochLoss []float64
@@ -538,7 +535,7 @@ func lossByEpoch(data []LossItem) []float64 {
 		loss := item.Loss
 		// New epoch
 		if epoch != currEpoch {
-			eloss := stat.Mean(epochLoss, nil)
+			eloss := Mean(epochLoss)
 			losses = append(losses, eloss)
 			epochLoss = []float64{}
 			epochLoss = append(epochLoss, loss)
@@ -550,6 +547,8 @@ func lossByEpoch(data []LossItem) []float64 {
 
 	return losses
 }
+
+/*
 
 type EpochTicks struct{}
 
@@ -570,3 +569,5 @@ func (EpochTicks) Ticks(min, max float64) []plot.Tick {
 	}
 	return ticks
 }
+
+*/

@@ -8,7 +8,6 @@ import (
 
 	ts "github.com/sugarme/gotch/tensor"
 	"github.com/sugarme/gotch/vision/aug"
-	"gonum.org/v1/gonum/stat/distuv"
 )
 
 // TransformOP is an interface to create a image transformer.
@@ -234,7 +233,7 @@ func contains(item int, items []int) bool {
 }
 
 func randomPoisson(lambda float64) float64 {
-	p := distuv.Poisson{Lambda: lambda}
+	p := Poisson{Lambda: lambda}
 	return p.Rand()
 }
 
