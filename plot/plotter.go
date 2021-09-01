@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
 	"log"
 	"os"
@@ -12,18 +14,21 @@ import (
 	"strings"
 )
 
-// Plotter helps saving plots of size WxH in a NxM grid layout
-// in several formats
-type Plotter struct {
-	N           int // number of charts on a row
-	M           int // number of charts on a column
-	W           int // chart width
-	H           int // chart height
-	Cnt         int // keeping number of charts been plotted
-	GraphicType string
-	Graphics    Graphics
-	writer      *bufio.Writer
-	buf         *bytes.Buffer
+type Plotter interface {
+	Plot(c Chart)
+	WriteToFile(filename string) error
+}
+
+type plotter struct {
+	n   int // num of charts on a row
+	m   int // num of charts on a column
+	w   int // chart width
+	h   int // chart height
+	cnt int // counting number plotted charts
+}
+
+func newPlotter(n, m, w, h int) *plotter {
+	return &plotter{n, m, w, h, 0}
 }
 
 type PlotterOptions struct {
@@ -72,97 +77,203 @@ func WithPlotterType(gtype string) PlotterOption {
 	}
 }
 
-// NewPlotter creates a new plotter.
-func NewPlotter(w, h int, opts ...PlotterOption) *Plotter {
-	options := defaultPlotterOptions()
+// ImagePlotter:
+// =============
+
+type ImagePlotter struct {
+	plotter *plotter
+	img     *image.RGBA
+}
+
+// NewImagePlotter creates a new ImagePlotter.
+func NewImagePlotter(w, h int, opts ...PlotterOption) *ImagePlotter {
+	o := defaultPlotterOptions()
 	for _, opt := range opts {
-		opt(options)
+		opt(o)
 	}
 
-	var graphics Graphics
-	var buf *bytes.Buffer = new(bytes.Buffer)
-	writer := bufio.NewWriter(buf)
-	bg := color.RGBA{0xff, 0xff, 0xff, 0xff}
-	switch options.GraphicType {
-	case "text":
-		graphics = NewTextGraphics(100, 30)
-	case "png":
-		graphics = NewImageGraphics(options.N*w, options.M*h, bg, nil, nil)
+	plotter := newPlotter(o.N, o.M, w, h)
 
-	case "svg":
-		sp := NewSVG(writer)
-		graphics = NewSvgGraphics(sp, w, h, "", 12, bg)
-		graphics.(*SvgGraphics).svg.Start(options.N*w, options.M*h)
-	}
+	img := image.NewRGBA(image.Rect(0, 0, o.N*w, o.M*h))
+	bg := image.NewUniform(color.RGBA{0xff, 0xff, 0xff, 0xff})
+	draw.Draw(img, img.Bounds(), bg, image.ZP, draw.Src)
 
-	return &Plotter{
-		N:           options.N,
-		M:           options.M,
-		W:           w,
-		H:           h,
-		Cnt:         0,
-		GraphicType: options.GraphicType,
-		Graphics:    graphics,
-		writer:      writer,
-		buf:         buf,
+	return &ImagePlotter{
+		plotter: plotter,
+		img:     img,
 	}
 }
 
-func (p *Plotter) Plot(c Chart) {
-	c.Plot(p.Graphics)
-	p.Cnt++
+func (p *ImagePlotter) Plot(c Chart) {
+	w := p.plotter.w
+	h := p.plotter.h
+	n := p.plotter.n
+	cnt := p.plotter.cnt
+	row, col := cnt/n, cnt%n
+	igr := AddTo(p.img, col*w, row*h, w, h, color.RGBA{0xff, 0xff, 0xff, 0xff}, nil, nil)
+	c.Plot(igr)
+	p.plotter.cnt++
 }
 
-func (p *Plotter) WriteToFile(filename string) error {
+func (p *ImagePlotter) WriteToFile(filename string) error {
 	var fn string
 	ext := strings.ToLower(filepath.Ext(filename))
-	switch p.GraphicType {
-	case "png":
-		if ext == ".png" {
-			fn = filename
-		} else {
-			fn = fmt.Sprintf("%s.png", filename)
-		}
-	case "text":
-		if ext == ".txt" {
-			fn = filename
-		} else {
-			fn = fmt.Sprintf("%s.txt", filename)
-		}
-	case "svg":
-		if ext == ".svg" {
-			fn = filename
-		} else {
-			fn = fmt.Sprintf("%s.svg", filename)
-		}
+	if ext == ".png" {
+		fn = filename
+	} else {
+		fn = fmt.Sprintf("%s.png", filename)
 	}
-
 	f, err := os.Create(fn)
 	if err != nil {
-		err = fmt.Errorf("Plotter.WriteToFile - creating file %s failed.\n", fn)
+		err = fmt.Errorf("ImagePlotter.WriteToFile - creating file %s failed.\n", fn)
 		return err
 	}
+	defer f.Close()
 
-	switch p.GraphicType {
+	return png.Encode(f, p.img)
+}
+
+// TextPlotter:
+// ============
+
+type TextPlotter struct {
+	plotter *plotter
+	buf     *bytes.Buffer
+	writer  *bufio.Writer
+}
+
+// NewTextPlotter creates new TextPlotter
+func NewTextPlotter(w, h int, opts ...PlotterOption) *TextPlotter {
+	o := defaultPlotterOptions()
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	plotter := newPlotter(o.N, o.M, w, h)
+	var buf *bytes.Buffer = new(bytes.Buffer)
+	writer := bufio.NewWriter(buf)
+
+	return &TextPlotter{
+		plotter: plotter,
+		buf:     buf,
+		writer:  writer,
+	}
+}
+
+func (p *TextPlotter) Plot(c Chart) {
+	tgr := NewTextGraphics(100, 30)
+	c.Plot(tgr)
+	p.writer.Write([]byte(tgr.String() + "\n\n\n"))
+}
+
+func (p *TextPlotter) WriteToFile(filename string) error {
+	var fn string
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == ".txt" {
+		fn = filename
+	} else {
+		fn = fmt.Sprintf("%s.txt", filename)
+	}
+	f, err := os.Create(fn)
+	if err != nil {
+		err = fmt.Errorf("TextPlotter.WriteToFile - creating file %s failed.\n", fn)
+		return err
+	}
+	defer f.Close()
+
+	err = p.writer.Flush()
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte(p.buf.String()))
+	return err
+}
+
+// SvgPlotter:
+// ===========
+
+type SvgPlotter struct {
+	plotter  *plotter
+	buf      *bytes.Buffer
+	writer   *bufio.Writer
+	graphics *SvgGraphics
+}
+
+// NewSvgPlotter creates new SvgPlotter
+func NewSvgPlotter(w, h int, opts ...PlotterOption) *SvgPlotter {
+	o := defaultPlotterOptions()
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	plotter := newPlotter(o.N, o.M, w, h)
+	var buf *bytes.Buffer = new(bytes.Buffer)
+	writer := bufio.NewWriter(buf)
+	sp := NewSVG(writer)
+	bg := color.RGBA{0xff, 0xff, 0xff, 0xff}
+	graphics := NewSvgGraphics(sp, w, h, "", 12, bg)
+	graphics.svg.Start(o.N*w, o.M*h)
+
+	return &SvgPlotter{
+		plotter:  plotter,
+		buf:      buf,
+		writer:   writer,
+		graphics: graphics,
+	}
+}
+
+func (p *SvgPlotter) Plot(c Chart) {
+	w := p.plotter.w
+	h := p.plotter.h
+	n := p.plotter.n
+	cnt := p.plotter.cnt
+	row, col := cnt/n, cnt%n
+	bg := color.RGBA{0xff, 0xff, 0xff, 0xff}
+	sgr := AddToSvg(p.graphics.svg, col*w, row*h, w, h, "", 12, bg)
+	c.Plot(sgr)
+	p.plotter.cnt++
+}
+
+func (p *SvgPlotter) WriteToFile(filename string) error {
+	var fn string
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == ".svg" {
+		fn = filename
+	} else {
+		fn = fmt.Sprintf("%s.svg", filename)
+	}
+	f, err := os.Create(fn)
+	if err != nil {
+		err = fmt.Errorf("SvgPlotter.WriteToFile - creating file %s failed.\n", fn)
+		return err
+	}
+	defer f.Close()
+	p.graphics.svg.End()
+	err = p.writer.Flush()
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte(p.buf.String()))
+	return err
+}
+
+// NewPlotter creates new Plotter.
+func NewPlotter(w, h int, opts ...PlotterOption) (Plotter, error) {
+	o := defaultPlotterOptions()
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	gtype := o.GraphicType
+	switch gtype {
 	case "png":
-		return png.Encode(f, p.Graphics.(*ImageGraphics).Image)
+		return NewImagePlotter(w, h, opts...), nil
 	case "text":
-		f.Write([]byte(p.Graphics.(*TextGraphics).String() + "\n\n\n"))
+		return NewTextPlotter(w, h, opts...), nil
 	case "svg":
-		p.Graphics.(*SvgGraphics).svg.End()
-		err := p.writer.Flush()
-		if err != nil {
-			return err
-		}
-		_, err = f.Write([]byte(p.buf.String()))
-		if err != nil {
-			return err
-		}
-
+		return NewSvgPlotter(w, h, opts...), nil
 	default:
-		err := fmt.Errorf("Plotter.WriteToFile - Unsupported graphics type: %q\n", p.GraphicType)
-		return err
+		err := fmt.Errorf("NewPlotter: unsupported graphic type %q\n", gtype)
+		return nil, err
 	}
-
-	return nil
 }
