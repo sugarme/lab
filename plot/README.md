@@ -28,7 +28,7 @@ Below are some examples of charts.
 
 ![Histogram](example/histogram/histogram.png)
 
-###J Strip Chart
+### Strip Chart
 
 ![Strip chart](example/strip/strip-chart.png)
 
@@ -40,7 +40,7 @@ Below are some examples of charts.
 
 ![Graphic text](example/text/text.svg)
 
-![Graphic text](example/text/text-graphics.png)
+![Graphic text](example/text/test-graphics.png)
 
 ## Chart Components
 
@@ -64,7 +64,7 @@ Below are some examples of charts.
 
 ![Kernels](example/kernel/kernels.png)
 
-## Real Usage Cases
+## Real Use Cases
 
 ### Train valid Loss
 
