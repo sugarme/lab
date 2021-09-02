@@ -16,5 +16,7 @@
 - [x] training configuration in yaml file
 - [x] metrics for segmentation and classification tasks
 
+`lab` is also packed with `data`, `draw` and `plot` sub-packages.
+
 This package is in progress and obviously there are many changes ahead. Feel free to contribute. 
 
