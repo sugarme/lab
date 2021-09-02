@@ -70,6 +70,10 @@ Below are some examples of charts.
 
 ![Train valid loss](example/loss/loss.png)
 
+### Find learning rate
+
+![Find learning rate](example/lr/find-lr.png)
+
 ## Acknowledgement
 
 Most of the code here are taken and modified from
