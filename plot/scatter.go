@@ -191,8 +191,9 @@ func (c *ScatterChart) drawFunction(g Graphics, i int) {
 	symax, symin := float64(yf(c.YRange.Min)), float64(yf(c.YRange.Max)) // y limits in screen coords
 	sxmin, sxmax := c.XRange.Data2Screen(c.XRange.Min), c.XRange.Data2Screen(c.XRange.Max)
 	width := sxmax - sxmin
+	var step int
 	if c.NSamples == 0 {
-		step := 6
+		step = 6
 		if width < 70 {
 			step = 3
 		}
@@ -203,8 +204,9 @@ func (c *ScatterChart) drawFunction(g Graphics, i int) {
 			step = 1
 		}
 		c.NSamples = width / step
+	} else {
+		step = width / c.NSamples
 	}
-	step := width / c.NSamples
 	if step < 1 {
 		step = 1
 	}
