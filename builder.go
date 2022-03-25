@@ -5,11 +5,11 @@ import (
 	"math"
 
 	"github.com/sugarme/gotch/dutil"
+	"github.com/sugarme/gotch/ts"
 	"github.com/sugarme/gotch/vision/aug"
 
 	"github.com/sugarme/gotch"
 	"github.com/sugarme/gotch/nn"
-	ts "github.com/sugarme/gotch/tensor"
 
 	lib "github.com/sugarme/lab/model"
 )
@@ -119,18 +119,18 @@ func (b *Builder) BuildLoss() (LossFunc, error) {
 		}
 
 	case "BCELoss":
-		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor{
-			return BCELoss(logits, target)				
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor {
+			return BCELoss(logits, target)
 		}
 
 	case "DiceLoss":
-		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor{
-			return DiceLoss(logits, target)				
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor {
+			return DiceLoss(logits, target)
 		}
 
 	case "JaccardLoss":
-		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor{
-			return JaccardLoss(logits, target)				
+		lossFunc = func(logits, target *ts.Tensor) *ts.Tensor {
+			return JaccardLoss(logits, target)
 		}
 	default:
 		err := fmt.Errorf("Unsupported loss function: %s\n", name)
@@ -155,8 +155,8 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 	fmt.Printf("optimizer name: %+v\n", name)
 
 	var lr float64
-	for k, v := range params{
-		switch k{
+	for k, v := range params {
+		switch k {
 		case "lr":
 			lr = v.(float64)
 			break
@@ -166,8 +166,8 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 	switch name {
 	case "AdamW":
 		cfg := nn.DefaultAdamWConfig()
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "beta1":
 				cfg.Beta1 = v.(float64)
 			case "beta2":
@@ -185,8 +185,8 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 
 	case "Adam":
 		cfg := nn.DefaultAdamConfig()
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "beta1":
 				cfg.Beta1 = v.(float64)
 			case "beta2":
@@ -204,8 +204,8 @@ func (b *Builder) BuildOptimizer(vs *nn.VarStore) (*nn.Optimizer, error) {
 
 	case "SGD":
 		cfg := nn.DefaultSGDConfig()
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "dampening":
 				cfg.Dampening = v.(float64)
 			case "momentum":
@@ -240,8 +240,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 	case "OneCycleLR":
 		var opts []nn.OneCycleOption
 		var maxLR float64
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "max_lr":
 				maxLR = v.(float64)
 			case "final_lr":
@@ -268,8 +268,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 		t0 := 10
 		tMult := 1
 		etaMin := 0.001
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "t0":
 				t0 = v.(int)
 			case "t_mult":
@@ -283,8 +283,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 	case "StepLR": // reduce LR by 0.1 every 10 epochs
 		stepSize := 10
 		gamma := 0.1
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "step_size":
 				stepSize = v.(int)
 			}
@@ -293,8 +293,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 		update = "on_epoch"
 	case "LambdaLR":
 		denominator := 30
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "denominator":
 				denominator = v.(int)
 			}
@@ -313,8 +313,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 		update = "on_epoch"
 	case "ExponentialLR":
 		gamma := 0.1
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "gamma":
 				gamma = v.(float64)
 			}
@@ -324,8 +324,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 	case "CosineAnnealingLR":
 		tmax := 10
 		etaMin := 0.0
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "tmax":
 				tmax = v.(int)
 			case "eta_min":
@@ -338,8 +338,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 		baseLRs := []float64{0.001}
 		maxLRs := []float64{0.1}
 
-		for k, v := range params{
-			switch k{
+		for k, v := range params {
+			switch k {
 			case "base_lr":
 				baseLRs = sliceInterface2Float64(v.([]interface{}))
 			case "max_lr":
@@ -361,9 +361,8 @@ func (b *Builder) BuildScheduler(opt *nn.Optimizer) (*Scheduler, error) {
 	return scheduler, nil
 }
 
-
 func (b *Builder) BuildTransformer(mode string) (aug.Transformer, error) {
-	switch mode{
+	switch mode {
 	case "train":
 		config := b.Config.Transform.Train
 		return MakeTransformer(config)
@@ -376,4 +375,3 @@ func (b *Builder) BuildTransformer(mode string) (aug.Transformer, error) {
 		return nil, err
 	}
 }
-

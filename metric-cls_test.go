@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 func TestConfusionMatrix(t *testing.T) {

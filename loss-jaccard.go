@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/sugarme/gotch"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 // JaccardLoss (JaccardIndex, IoU) calculates the ratio of intersection over union.

@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/sugarme/gotch"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 // The below code taken from: https://github.com/gonum/gonum/blob/master/stat/distuv/poisson.go

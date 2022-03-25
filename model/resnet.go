@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/sugarme/gotch/nn"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 func rgbNormalize(x *ts.Tensor) *ts.Tensor {
@@ -126,11 +126,11 @@ func resnet(p *nn.Path, nclasses int64, c1, c2, c3, c4 int64) nn.FuncT {
 	seq.Add(layer3)
 	seq.Add(layer4)
 
-	if nclasses > 0{
+	if nclasses > 0 {
 		// With final layer
 		linearConfig := nn.DefaultLinearConfig()
 		fc := nn.NewLinear(p.Sub("fc"), 512, nclasses, linearConfig)
-		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor{
+		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor {
 			output := seq.ForwardT(x, train)
 			avgpool := output.MustAdaptiveAvgPool2d([]int64{1, 1}, true)
 			fv := avgpool.FlatView()
@@ -142,7 +142,7 @@ func resnet(p *nn.Path, nclasses int64, c1, c2, c3, c4 int64) nn.FuncT {
 		})
 	} else {
 		// no final layer
-		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor{
+		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor {
 			output := seq.ForwardT(x, train)
 			avgpool := output.MustAdaptiveAvgPool2d([]int64{1, 1}, true)
 			retVal := avgpool.FlatView()
@@ -153,7 +153,7 @@ func resnet(p *nn.Path, nclasses int64, c1, c2, c3, c4 int64) nn.FuncT {
 	}
 }
 
-type bottleneckBlock struct{
+type bottleneckBlock struct {
 	Conv1      *nn.Conv2D
 	Bn1        *nn.BatchNorm
 	Conv2      *nn.Conv2D
@@ -164,7 +164,7 @@ type bottleneckBlock struct{
 }
 
 // ForwardT implements ModuleT for bottleneckBlock.
-func(b *bottleneckBlock) ForwardT(xs *ts.Tensor, train bool) *ts.Tensor{
+func (b *bottleneckBlock) ForwardT(xs *ts.Tensor, train bool) *ts.Tensor {
 	/*
 		c1 := xs.Apply(b.Conv1)
 		bn1 := c1.ApplyT(b.Bn1, train)
@@ -183,30 +183,29 @@ func(b *bottleneckBlock) ForwardT(xs *ts.Tensor, train bool) *ts.Tensor{
 		bn3.MustDrop()
 		res := add.MustRelu(true)
 		return res
-		*/
+	*/
 
-		c1 := b.Conv1.ForwardT(xs, train)
-		bn1 := b.Bn1.ForwardT(c1, train)
-		c1.MustDrop()
-		relu1 := bn1.MustRelu(true)
-		c2 := b.Conv2.ForwardT(relu1, train)
-		relu1.MustDrop()
-		bn2 := b.Bn2.ForwardT(c2, train)
-		c2.MustDrop()
-		relu2 := bn2.MustRelu(true)
-		c3 := b.Conv3.ForwardT(relu2, train)
-		relu2.MustDrop()
-		bn3 := b.Bn3.ForwardT(c3, train)
-		c3.MustDrop()
+	c1 := b.Conv1.ForwardT(xs, train)
+	bn1 := b.Bn1.ForwardT(c1, train)
+	c1.MustDrop()
+	relu1 := bn1.MustRelu(true)
+	c2 := b.Conv2.ForwardT(relu1, train)
+	relu1.MustDrop()
+	bn2 := b.Bn2.ForwardT(c2, train)
+	c2.MustDrop()
+	relu2 := bn2.MustRelu(true)
+	c3 := b.Conv3.ForwardT(relu2, train)
+	relu2.MustDrop()
+	bn3 := b.Bn3.ForwardT(c3, train)
+	c3.MustDrop()
 
-		dsl := b.Downsample.ForwardT(xs, train)
-		add := dsl.MustAdd(bn3, true)
-		bn3.MustDrop()
-		res := add.MustRelu(true)
+	dsl := b.Downsample.ForwardT(xs, train)
+	add := dsl.MustAdd(bn3, true)
+	bn3.MustDrop()
+	res := add.MustRelu(true)
 
-		return res
+	return res
 }
-
 
 // Bottleneck versions for ResNet 50, 101, and 152.
 func newBottleneckBlock(path *nn.Path, cIn, cOut, stride, e int64) *bottleneckBlock {
@@ -220,16 +219,15 @@ func newBottleneckBlock(path *nn.Path, cIn, cOut, stride, e int64) *bottleneckBl
 	downsample := downSample(path.Sub("downsample"), cIn, eDim, stride)
 
 	return &bottleneckBlock{
-		Conv1: conv1,
-		Bn1: bn1,
-		Conv2: conv2,
-		Bn2: bn2,
-		Conv3: conv3,
-		Bn3: bn3,
+		Conv1:      conv1,
+		Bn1:        bn1,
+		Conv2:      conv2,
+		Bn2:        bn2,
+		Conv3:      conv3,
+		Bn3:        bn3,
 		Downsample: downsample,
 	}
 }
-
 
 func bottleneckLayer(path *nn.Path, cIn, cOut, stride, cnt int64) ts.ModuleT {
 	layer := nn.SeqT()
@@ -258,11 +256,11 @@ func bottleneckResnet(path *nn.Path, nclasses int64, c1, c2, c3, c4 int64) ts.Mo
 	seq.Add(layer3)
 	seq.Add(layer4)
 
-	if nclasses > 0{
+	if nclasses > 0 {
 		// With final layer
 		linearConfig := nn.DefaultLinearConfig()
 		fc := nn.NewLinear(path.Sub("fc"), 4*512, nclasses, linearConfig)
-		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor{
+		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor {
 			output := seq.ForwardT(x, train)
 			avgpool := output.MustAdaptiveAvgPool2d([]int64{1, 1}, true)
 			fv := avgpool.FlatView()
@@ -274,7 +272,7 @@ func bottleneckResnet(path *nn.Path, nclasses int64, c1, c2, c3, c4 int64) ts.Mo
 		})
 	} else {
 		// no final layer
-		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor{
+		return nn.NewFuncT(func(x *ts.Tensor, train bool) *ts.Tensor {
 			output := seq.ForwardT(x, train)
 			avgpool := output.MustAdaptiveAvgPool2d([]int64{1, 1}, true)
 			retVal := avgpool.FlatView()
@@ -340,19 +338,18 @@ func ResNet(p *nn.Path, nclasses int64, backbone string) ts.ModuleT {
 	var m ts.ModuleT
 	switch backbone {
 	case "resnet18":
-		m = ResNet18(p, nclasses) 
+		m = ResNet18(p, nclasses)
 	case "resnet34":
-		m = ResNet34(p, nclasses) 
+		m = ResNet34(p, nclasses)
 	case "resnet50":
-		m = ResNet50(p, nclasses) 
+		m = ResNet50(p, nclasses)
 	case "resnet101":
-		m = ResNet101(p, nclasses) 
+		m = ResNet101(p, nclasses)
 	case "resnet152":
-		m = ResNet152(p, nclasses) 
+		m = ResNet152(p, nclasses)
 	default:
 		log.Fatalf("Invalid backbone type: %s\n", backbone)
 	}
 
 	return m
 }
-

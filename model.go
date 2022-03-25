@@ -2,7 +2,7 @@ package lab
 
 import (
 	"github.com/sugarme/gotch/nn"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 var ModelZoo map[string]string = map[string]string{
@@ -24,9 +24,9 @@ var ModelZoo map[string]string = map[string]string{
 	"tf_efficientnet_b6_ns": "EffNet",
 	"tf_efficientnet_b7_ns": "EffNet",
 
-	"resnet18": "ResNet",
-	"resnet34": "ResNet",
-	"resnet50": "ResNet",
+	"resnet18":  "ResNet",
+	"resnet34":  "ResNet",
+	"resnet50":  "ResNet",
 	"resnet101": "ResNet",
 	"resnet152": "ResNet",
 

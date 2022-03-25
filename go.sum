@@ -28,8 +28,12 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/sugarme/gotch v0.3.13/go.mod h1:ydo7fmsmT+2L5p8Am1YhOLSWGN9WV9nyrfk/RSmhTfo=
 github.com/sugarme/gotch v0.4.5 h1:KbJORNo5RfYMcpeUOR7vlfxtzucbt9j/XcfEl3w5/a0=
 github.com/sugarme/gotch v0.4.5/go.mod h1:ydo7fmsmT+2L5p8Am1YhOLSWGN9WV9nyrfk/RSmhTfo=
+github.com/sugarme/gotch v0.7.0 h1:vDQqLmuo5uhqNTfTyR7xbye9pPK9a4l57YWMKH41gGU=
+github.com/sugarme/gotch v0.7.0/go.mod h1:ydo7fmsmT+2L5p8Am1YhOLSWGN9WV9nyrfk/RSmhTfo=
 github.com/sugarme/iseg v0.0.0-20210707054136-23f25d7f1159 h1:BjsEZmkIFIvIPCq4YTaebKRyW+0BVpxBUkMlB3V8HuQ=
 github.com/sugarme/iseg v0.0.0-20210707054136-23f25d7f1159/go.mod h1:dPmEzFQdfYgmWvpmpQIUQVXPGCMIPYdu84NxQ2SPdiA=
+github.com/sugarme/iseg v0.3.0 h1:y6dG5wgcBGmgUGGdowfMIl7gTk9IM9KQip+rHZpGrhY=
+github.com/sugarme/iseg v0.3.0/go.mod h1:bEQ1Ita/HzI5W6dFX059fJ2/ZzWnfIbUoQXdTxa+/D8=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/exp v0.0.0-20180321215751-8460e604b9de/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=

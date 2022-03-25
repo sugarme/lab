@@ -5,7 +5,7 @@ import (
 	"log"
 	"reflect"
 
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 func softJaccardScore(output, target *ts.Tensor, smoothVal float64, epsVal float64, dims []int64) (*ts.Tensor, error) {

@@ -10,7 +10,7 @@ import (
 	"log"
 
 	"github.com/sugarme/gotch/nn"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 )
 
 // DenseNet creates DenseNet ModuleT.
@@ -18,20 +18,19 @@ func DenseNet(p *nn.Path, nclasses int64, backbone string) ts.ModuleT {
 	var m ts.ModuleT
 	switch backbone {
 	case "densenet121":
-		m = DenseNet121(p, nclasses) 
+		m = DenseNet121(p, nclasses)
 	case "densenet161":
-		m = DenseNet161(p, nclasses) 
+		m = DenseNet161(p, nclasses)
 	case "densenet169":
-		m = DenseNet169(p, nclasses) 
+		m = DenseNet169(p, nclasses)
 	case "densenet201":
-		m = DenseNet201(p, nclasses) 
+		m = DenseNet201(p, nclasses)
 	default:
 		log.Fatalf("Invalid backbone type: %s\n", backbone)
 	}
 
 	return m
 }
-
 
 func dnConv2d(p *nn.Path, cIn, cOut, ksize, padding, stride int64) *nn.Conv2D {
 	config := nn.DefaultConv2DConfig()
@@ -42,28 +41,28 @@ func dnConv2d(p *nn.Path, cIn, cOut, ksize, padding, stride int64) *nn.Conv2D {
 	return nn.NewConv2D(p, cIn, cOut, ksize, config)
 }
 
-type denseLayer struct{
-	Conv1      *nn.Conv2D
-	Bn1        *nn.BatchNorm
-	Conv2      *nn.Conv2D
-	Bn2        *nn.BatchNorm
+type denseLayer struct {
+	Conv1 *nn.Conv2D
+	Bn1   *nn.BatchNorm
+	Conv2 *nn.Conv2D
+	Bn2   *nn.BatchNorm
 }
 
 func (l *denseLayer) ForwardT(xs *ts.Tensor, train bool) *ts.Tensor {
-		ys1 := xs.ApplyT(l.Bn1, train)
-		ys2 := ys1.MustRelu(true)
-		ys3 := ys2.Apply(l.Conv1)
-		ys2.MustDrop()
-		ys4 := ys3.ApplyT(l.Bn2, train)
-		ys3.MustDrop()
-		ys5 := ys4.MustRelu(true)
-		ys := ys5.Apply(l.Conv2)
-		ys5.MustDrop()
+	ys1 := xs.ApplyT(l.Bn1, train)
+	ys2 := ys1.MustRelu(true)
+	ys3 := ys2.Apply(l.Conv1)
+	ys2.MustDrop()
+	ys4 := ys3.ApplyT(l.Bn2, train)
+	ys3.MustDrop()
+	ys5 := ys4.MustRelu(true)
+	ys := ys5.Apply(l.Conv2)
+	ys5.MustDrop()
 
-		res := ts.MustCat([]ts.Tensor{*xs, *ys}, 1)
-		ys.MustDrop()
+	res := ts.MustCat([]ts.Tensor{*xs, *ys}, 1)
+	ys.MustDrop()
 
-		return res
+	return res
 }
 
 func newDenseLayer(p *nn.Path, cIn, bnSize, growth int64) ts.ModuleT {
@@ -74,9 +73,9 @@ func newDenseLayer(p *nn.Path, cIn, bnSize, growth int64) ts.ModuleT {
 	conv2 := dnConv2d(p.Sub("conv2"), cInter, growth, 3, 1, 1)
 
 	return &denseLayer{
-		Bn1: bn1,
+		Bn1:   bn1,
 		Conv1: conv1,
-		Bn2: bn2,
+		Bn2:   bn2,
 		Conv2: conv2,
 	}
 }
@@ -130,7 +129,7 @@ func densenet(p *nn.Path, cIn, bnSize int64, growth int64, blockConfig []int64, 
 
 		if i+1 != len(blockConfig) {
 			seq.Add(transition(fp.Sub(fmt.Sprintf("transition%v", 1+i)), nfeat, nfeat/2))
-			nfeat = nfeat/2
+			nfeat = nfeat / 2
 		}
 	}
 
@@ -165,4 +164,3 @@ func DenseNet169(p *nn.Path, nclasses int64) ts.ModuleT {
 func DenseNet201(p *nn.Path, nclasses int64) ts.ModuleT {
 	return densenet(p, 64, 4, 32, []int64{6, 12, 48, 32}, nclasses)
 }
-

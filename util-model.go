@@ -7,14 +7,14 @@ import (
 
 	"github.com/sugarme/gotch"
 	"github.com/sugarme/gotch/nn"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 
 	lib "github.com/sugarme/lab/model"
 )
 
 // CheckBuildModel tries to build model from input configuration.
 // It returns error if build failed.
-func CheckBuildModel(cfg *Config)  error{
+func CheckBuildModel(cfg *Config) error {
 	b := NewBuilder(cfg)
 
 	_, err := b.BuildModel()
@@ -27,9 +27,9 @@ func CheckBuildModel(cfg *Config)  error{
 }
 
 // ModelSummary prints out model architecture to stdout.
-func ModelSummary(modelName string){
+func ModelSummary(modelName string) {
 	vs := nn.NewVarStore(gotch.CPU)
-	switch modelName{
+	switch modelName {
 	case "densenet121":
 		_ = lib.DenseNet121(vs.Root(), 1000)
 	default:
@@ -37,10 +37,10 @@ func ModelSummary(modelName string){
 	}
 
 	var namedTensors []ts.NamedTensor
-	for name, x := range vs.Variables(){
+	for name, x := range vs.Variables() {
 		namedTensors = append(namedTensors, ts.NamedTensor{
-			Name: name,
-			Tensor: x,
+			Name:   name,
+			Tensor: &x,
 		})
 	}
 
@@ -48,7 +48,7 @@ func ModelSummary(modelName string){
 }
 
 // PretrainedSummary loads and prints out layers of pretrained model from input file.
-func PretrainedSummary(file string){
+func PretrainedSummary(file string) {
 	vs := nn.NewVarStore(gotch.CPU)
 	err := vs.Load(file)
 
@@ -63,7 +63,7 @@ func PretrainedSummary(file string){
 }
 
 // Print named tensors
-func printNamedTensors(namedTensors []ts.NamedTensor){
+func printNamedTensors(namedTensors []ts.NamedTensor) {
 	layers := make([]string, 0, len(namedTensors))
 	for _, namedTensor := range namedTensors {
 		layers = append(layers, namedTensor.Name)
@@ -82,4 +82,3 @@ func printNamedTensors(namedTensors []ts.NamedTensor){
 
 	fmt.Printf("Num of layers: %v\n", len(namedTensors))
 }
-

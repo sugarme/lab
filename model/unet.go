@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/sugarme/gotch/nn"
-	ts "github.com/sugarme/gotch/tensor"
+	"github.com/sugarme/gotch/ts"
 	"github.com/sugarme/iseg/unet"
 )
 
@@ -13,7 +13,6 @@ func resnetUnet(vs *nn.VarStore) ts.ModuleT {
 
 	return net
 }
-
 
 func UNet(p *nn.Path, backbone string) ts.ModuleT {
 	var m ts.ModuleT
